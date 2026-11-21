@@ -17,3 +17,4 @@ Akun development ada di `apps/api/.env` (`SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWO
 
 
 > Status: Repository aktif dan siap untuk kolaborasi tim.
+- Tes push dari tim Windows berhasil 
