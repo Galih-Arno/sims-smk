@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", Inter, "Segoe UI", system-ui, sans-serif;
+  --color-navy-950: #0b1220;
+  --color-navy-900: #162033;
+  --color-lavender-100: #efe9fb;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.05);
+  --radius-card: 1rem;
+}
+
+:root {
+  --sims-navy: #0b1220;
+  --sims-emerald: #0f766e;
+  --sims-lavender: #ddd6fe;
+  --sims-surface: #f4f6f8;
+  --sims-border: #d5dde6;
+  --sims-radius: 1rem;
+  --sims-shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.05);
+  --sims-duration: 200ms;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background: var(--sims-surface);
+  color: #0f172a;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 14mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    height: auto !important;
+    background: white !important;
+  }
+
+  .app-frame,
+  .app-scroll {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .app-chrome,
+  .report-screen {
+    display: none !important;
+  }
+
+  .report-print {
+    display: block !important;
+    max-width: none !important;
+    box-shadow: none !important;
+  }
+
+  .report-print tr,
+  .report-print section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+input[data-grade-input]:focus {
+  border-color: #0f766e !important;
+  background-color: #f0fdfa !important;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.22) !important;
+  outline: none;
+}

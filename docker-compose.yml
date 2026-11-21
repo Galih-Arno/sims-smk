@@ -1,0 +1,25 @@
+name: sims-smk
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sims-smk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sims
+      POSTGRES_PASSWORD: sims_dev_password
+      POSTGRES_DB: sims_smk
+    ports:
+      - "5432:5432"
+    volumes:
+      - sims_smk_pg:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sims -d sims_smk"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  sims_smk_pg:

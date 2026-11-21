@@ -1,0 +1,1229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleScope {
+  PLATFORM
+  SCHOOL
+}
+
+enum RoleCode {
+  SYSTEM_OWNER
+  ADMIN_SEKOLAH
+  WAKAKUR
+  KEPALA_SEKOLAH
+  GURU_MAPEL
+  WALI_KELAS
+  TU
+}
+
+enum SemesterKind {
+  GANJIL
+  GENAP
+}
+
+enum Gender {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum SubjectCategory {
+  UMUM
+  KEJURUAN
+}
+
+enum GradeStatus {
+  DRAFT
+}
+
+enum AssessmentWorkflowStatus {
+  DRAFT
+  SUBMITTED
+  REVISION_REQUESTED
+}
+
+enum AttendanceMeetingStatus {
+  DRAFT
+  FINAL
+}
+
+enum AttendanceMark {
+  HADIR
+  SAKIT
+  IZIN
+  ALPA
+}
+
+enum AttendanceCalendarKind {
+  PEMBELAJARAN
+  LIBUR
+  TIDAK_WAJIB
+}
+
+enum AttendanceCompletenessStatus {
+  DRAFT
+  ACTIVE
+}
+
+enum HomeroomNoteStatus {
+  DRAFT
+  FINAL
+}
+
+enum ReportCardStatus {
+  DRAF
+  DIAJUKAN
+  DISETUJUI_WAKAKUR
+  DIKEMBALIKAN
+  DISAHKAN
+}
+
+enum GradeComponentKind {
+  FORMATIVE
+  SUMMATIVE
+  STS
+  SAS
+}
+
+enum GradeComponentField {
+  UH
+  T1
+  T2
+  T3
+  REMEDIAL
+  SCORE
+  STS
+  SAS
+}
+
+enum GradeReportPolicyStatus {
+  DRAFT
+  ACTIVE
+}
+
+enum FormativeWeightMode {
+  COMBINED
+  SEPARATE
+}
+
+enum RemedialScorePolicy {
+  HIGHEST
+  LATEST
+  CAPPED
+}
+
+enum GradeRoundingMode {
+  NONE
+  INTEGER
+  ONE_DECIMAL
+  TWO_DECIMALS
+}
+
+enum EmptyScoreTreatment {
+  INCOMPLETE
+}
+
+enum SchoolAccessStatus {
+  AKTIF
+  NONAKTIF
+  DITANGGUHKAN
+}
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  npsn      String   @unique @db.VarChar(16)
+  address       String?
+  phone         String?  @db.VarChar(32)
+  email         String?  @db.VarChar(254)
+  city          String?  @db.VarChar(80)
+  province      String?  @db.VarChar(80)
+  postalCode    String?  @db.VarChar(10)
+  website       String?  @db.VarChar(200)
+  accreditation String?  @db.VarChar(8)
+  principalName String?
+  stsEnabled       Boolean  @default(true)
+  sasEnabled       Boolean  @default(true)
+  requireUh        Boolean  @default(false)
+  requireT1        Boolean  @default(false)
+  requireT2        Boolean  @default(false)
+  requireT3        Boolean  @default(false)
+  requireSummative Boolean  @default(false)
+  requireSts       Boolean  @default(false)
+  requireSas       Boolean  @default(false)
+  isActive         Boolean            @default(true)
+  accessStatus     SchoolAccessStatus @default(AKTIF)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assignments             UserRole[]
+  academicYears           AcademicYear[]
+  academicPeriods         AcademicPeriod[]
+  expertiseFields         ExpertiseField[]
+  expertisePrograms       ExpertiseProgram[]
+  expertiseConcentrations ExpertiseConcentration[]
+  teachers                Teacher[]
+  students                Student[]
+  classes                 SchoolClass[]
+  subjects                Subject[]
+  teachingAssignments     TeachingAssignment[]
+  homeroomAssignments     HomeroomAssignment[]
+  curricula               Curriculum[]
+  curriculumPlacements    CurriculumPlacement[]
+  learningObjectives      LearningObjective[]
+  materialScopes          MaterialScope[]
+  formativeAssessments    FormativeAssessment[]
+  summativeAssessments    SummativeAssessment[]
+  formativeScores         FormativeScore[]
+  summativeScores         SummativeScore[]
+  termExamScores          TermExamScore[]
+  gradeSubmissions          GradeSubmission[]
+  gradeComponentSubmissions GradeComponentSubmission[]
+  gradeReportPolicies       GradeReportPolicy[]
+  gradeFinalResults         GradeFinalResult[]
+  competencyDescriptions    CompetencyDescription[]
+  competencyDescriptionEntries CompetencyDescriptionEntry[]
+  classScheduleSlots        ClassScheduleSlot[]
+  attendanceMeetings        AttendanceMeeting[]
+  attendanceRecords         AttendanceRecord[]
+  attendanceCorrections     AttendanceCorrection[]
+  dailyAttendances          DailyAttendance[]
+  dailyAttendanceRecords    DailyAttendanceRecord[]
+  dailyAttendanceCorrections DailyAttendanceCorrection[]
+  attendanceCompletenessRules AttendanceCompletenessRule[]
+  attendanceCalendarDays      AttendanceCalendarDay[]
+  homeroomNotes               HomeroomNote[]
+  homeroomNoteCorrections     HomeroomNoteCorrection[]
+  reportReviews               ReportReview[]
+  reportCardWorkflows         ReportCardWorkflow[]
+  reportCardSnapshots         ReportCardSnapshot[]
+  reportCardEvents            ReportCardEvent[]
+  studentReportActivities     StudentReportActivity[]
+  auditLogs                 AuditLog[]
+
+  @@index([isActive])
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique @db.VarChar(254)
+  passwordHash        String
+  name                String
+  isActive            Boolean   @default(true)
+  mustChangePassword  Boolean   @default(false)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  assignments   UserRole[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  teacher       Teacher?
+
+  @@index([isActive])
+}
+
+model Role {
+  id          String    @id @default(cuid())
+  code        RoleCode  @unique
+  name        String
+  description String?
+  scope       RoleScope
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  assignments UserRole[]
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  schoolId  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role    @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  school School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId, schoolId])
+  @@index([userId])
+  @@index([schoolId])
+  @@index([roleId])
+}
+
+model AcademicYear {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school              School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  periods             AcademicPeriod[]
+  classes             SchoolClass[]
+  curricula           Curriculum[]
+  gradeReportPolicies GradeReportPolicy[]
+  homeroomNotes       HomeroomNote[]
+  reportCardWorkflows ReportCardWorkflow[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId, isActive])
+}
+
+model AcademicPeriod {
+  id             String        @id @default(cuid())
+  schoolId       String
+  academicYearId String?
+  name           String
+  semesterKind   SemesterKind?
+  startDate      DateTime      @db.Date
+  endDate        DateTime      @db.Date
+  isActive       Boolean       @default(false)
+  reportDate     DateTime?     @db.Date
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  school              School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear        AcademicYear?        @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  teachingAssignments TeachingAssignment[]
+  homeroomAssignments HomeroomAssignment[]
+  gradeReportPolicies GradeReportPolicy[]
+  attendanceCompletenessRules AttendanceCompletenessRule[]
+  homeroomNotes               HomeroomNote[]
+  reportReviews               ReportReview[]
+  reportCardWorkflows         ReportCardWorkflow[]
+  reportCardSnapshots         ReportCardSnapshot[]
+  studentReportActivities     StudentReportActivity[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId, isActive])
+  @@index([academicYearId])
+}
+
+model ExpertiseField {
+  id        String   @id @default(cuid())
+  schoolId  String
+  code      String   @db.VarChar(16)
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school   School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  programs ExpertiseProgram[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId, name])
+}
+
+model ExpertiseProgram {
+  id        String   @id @default(cuid())
+  schoolId  String
+  fieldId   String
+  code      String   @db.VarChar(16)
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school         School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  field          ExpertiseField           @relation(fields: [fieldId], references: [id], onDelete: Restrict)
+  concentrations ExpertiseConcentration[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId, fieldId])
+}
+
+model ExpertiseConcentration {
+  id        String   @id @default(cuid())
+  schoolId  String
+  programId String
+  code      String   @db.VarChar(16)
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school   School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  program  ExpertiseProgram @relation(fields: [programId], references: [id], onDelete: Restrict)
+  classes  SchoolClass[]
+  students Student[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId, programId])
+}
+
+model Teacher {
+  id        String   @id @default(cuid())
+  schoolId  String
+  userId    String?  @unique
+  nip       String?  @db.VarChar(18)
+  nuptk     String?  @db.VarChar(16)
+  name      String
+  gender    Gender
+  email     String?  @db.VarChar(254)
+  phone     String?  @db.VarChar(32)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school                  School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user                    User?                        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  teachingAssignments     TeachingAssignment[]
+  homeroomAssignments     HomeroomAssignment[]
+  receivedGradeComponents GradeComponentSubmission[]   @relation("GradeComponentRecipient")
+  receivedDescriptions    CompetencyDescription[]      @relation("CompetencyDescriptionRecipient")
+
+  @@unique([schoolId, nip])
+  @@index([schoolId, name])
+}
+
+model SchoolClass {
+  id               String   @id @default(cuid())
+  schoolId         String
+  academicYearId   String
+  concentrationId  String?
+  name             String
+  gradeLevel       Int
+  fase             String?  @db.VarChar(16)
+  capacity         Int      @default(36)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  school              School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear        AcademicYear          @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  concentration       ExpertiseConcentration? @relation(fields: [concentrationId], references: [id], onDelete: SetNull)
+  students             Student[]
+  teachingAssignments  TeachingAssignment[]
+  homeroomAssignments  HomeroomAssignment[]
+  curriculumPlacements CurriculumPlacement[]
+  homeroomNotes        HomeroomNote[]
+  reportReviews        ReportReview[]
+  reportCardWorkflows  ReportCardWorkflow[]
+
+  @@unique([schoolId, academicYearId, name])
+  @@index([schoolId, gradeLevel])
+}
+
+model Student {
+  id               String    @id @default(cuid())
+  schoolId         String
+  nisn             String    @unique @db.VarChar(10)
+  nis              String?   @db.VarChar(32)
+  name             String
+  gender           Gender
+  birthPlace       String?   @db.VarChar(80)
+  birthDate        DateTime? @db.Date
+  email            String?   @db.VarChar(254)
+  phone            String?   @db.VarChar(32)
+  classId          String?
+  concentrationId  String?
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  school        School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class         SchoolClass?            @relation(fields: [classId], references: [id], onDelete: SetNull)
+  concentration ExpertiseConcentration? @relation(fields: [concentrationId], references: [id], onDelete: SetNull)
+  formativeScores   FormativeScore[]
+  summativeScores   SummativeScore[]
+  termExamScores    TermExamScore[]
+  gradeFinalResults GradeFinalResult[]
+  attendanceRecords      AttendanceRecord[]
+  dailyAttendanceRecords DailyAttendanceRecord[]
+  competencyDescriptionEntries CompetencyDescriptionEntry[]
+  homeroomNotes                HomeroomNote[]
+  reportReviews                ReportReview[]
+  reportCardWorkflows          ReportCardWorkflow[]
+  reportCardSnapshots          ReportCardSnapshot[]
+  studentReportActivities      StudentReportActivity[]
+
+  @@unique([schoolId, nis])
+  @@index([schoolId, name])
+  @@index([classId])
+}
+
+model Subject {
+  id        String          @id @default(cuid())
+  schoolId  String
+  code      String          @db.VarChar(16)
+  name      String
+  category  SubjectCategory @default(UMUM)
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  school               School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignments  TeachingAssignment[]
+  curriculumPlacements CurriculumPlacement[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId, name])
+}
+
+model TeachingAssignment {
+  id               String   @id @default(cuid())
+  schoolId         String
+  teacherId        String
+  subjectId        String
+  classId          String
+  academicPeriodId String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  school             School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher            Teacher            @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  subject            Subject            @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  class              SchoolClass        @relation(fields: [classId], references: [id], onDelete: Restrict)
+  academicPeriod     AcademicPeriod     @relation(fields: [academicPeriodId], references: [id], onDelete: Restrict)
+  learningObjectives LearningObjective[]
+  materialScopes     MaterialScope[]
+  termExamScores     TermExamScore[]
+  gradeSubmission    GradeSubmission?
+  gradeComponents    GradeComponentSubmission[]
+  gradeFinalResults  GradeFinalResult[]
+  competencyDescription CompetencyDescription?
+  classScheduleSlots ClassScheduleSlot[]
+  attendanceMeetings AttendanceMeeting[]
+
+  @@unique([classId, subjectId, academicPeriodId])
+  @@index([schoolId, teacherId])
+  @@index([academicPeriodId])
+}
+
+model GradeSubmission {
+  id                   String                   @id @default(cuid())
+  schoolId             String
+  teachingAssignmentId String                   @unique
+  status               AssessmentWorkflowStatus @default(DRAFT)
+  submittedAt          DateTime?
+  submittedById        String?
+  revisionReason       String?                  @db.VarChar(500)
+  revisionRequestedAt  DateTime?
+  decidedAt            DateTime?
+  decidedById          String?
+  decisionNote         String?                  @db.VarChar(500)
+  legacyResolvedAt     DateTime?
+  legacyResolvedById   String?
+  legacyResolutionNote String?                  @db.VarChar(500)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  school             School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
+
+  @@index([schoolId, status])
+}
+
+model GradeComponentSubmission {
+  id                   String                   @id @default(cuid())
+  schoolId             String
+  teachingAssignmentId String
+  componentKey         String                   @db.VarChar(120)
+  kind                 GradeComponentKind
+  field                GradeComponentField
+  learningObjectiveId  String?
+  materialScopeId      String?
+  status               AssessmentWorkflowStatus @default(DRAFT)
+  submittedAt          DateTime?
+  submittedById        String?
+  recipientTeacherId   String?
+  revisionReason       String?                  @db.VarChar(500)
+  revisionRequestedAt  DateTime?
+  decidedAt            DateTime?
+  decidedById          String?
+  decisionNote         String?                  @db.VarChar(500)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  school             School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
+  recipient          Teacher?           @relation("GradeComponentRecipient", fields: [recipientTeacherId], references: [id], onDelete: SetNull)
+
+  @@unique([teachingAssignmentId, componentKey])
+  @@index([schoolId, status])
+  @@index([recipientTeacherId])
+}
+
+model GradeReportPolicy {
+  id                String                  @id @default(cuid())
+  schoolId          String
+  academicYearId    String
+  academicPeriodId  String
+  curriculumId      String
+  label             String?                 @db.VarChar(40)
+  status            GradeReportPolicyStatus @default(DRAFT)
+  useFormative      Boolean
+  useSummative      Boolean
+  useSts            Boolean
+  useSas            Boolean
+  formativeMode     FormativeWeightMode
+  weightFormative   Decimal?                @db.Decimal(5, 2)
+  weightUh          Decimal?                @db.Decimal(5, 2)
+  weightT1          Decimal?                @db.Decimal(5, 2)
+  weightT2          Decimal?                @db.Decimal(5, 2)
+  weightT3          Decimal?                @db.Decimal(5, 2)
+  weightSummative   Decimal?                @db.Decimal(5, 2)
+  weightSts         Decimal?                @db.Decimal(5, 2)
+  weightSas         Decimal?                @db.Decimal(5, 2)
+  remedialPolicy    RemedialScorePolicy
+  remedialCap       Decimal?                @db.Decimal(5, 2)
+  emptyTreatment    EmptyScoreTreatment     @default(INCOMPLETE)
+  roundingMode      GradeRoundingMode
+  activatedAt       DateTime?
+  activatedById     String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  academicPeriod AcademicPeriod @relation(fields: [academicPeriodId], references: [id], onDelete: Restrict)
+  curriculum     Curriculum     @relation(fields: [curriculumId], references: [id], onDelete: Restrict)
+
+  @@unique([schoolId, academicYearId, academicPeriodId, curriculumId])
+  @@index([schoolId, status])
+}
+
+model GradeFinalResult {
+  id                   String   @id @default(cuid())
+  schoolId             String
+  teachingAssignmentId String
+  studentId            String
+  score                Decimal  @db.Decimal(8, 4)
+  formula              String   @db.VarChar(1000)
+  detail               Json
+  savedAt              DateTime @default(now())
+  savedById            String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  school             School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
+  student            Student            @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([teachingAssignmentId, studentId])
+  @@index([schoolId])
+}
+
+model HomeroomAssignment {
+  id               String   @id @default(cuid())
+  schoolId         String
+  teacherId        String
+  classId          String
+  academicPeriodId String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher        Teacher        @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  class          SchoolClass    @relation(fields: [classId], references: [id], onDelete: Restrict)
+  academicPeriod   AcademicPeriod    @relation(fields: [academicPeriodId], references: [id], onDelete: Restrict)
+  dailyAttendances    DailyAttendance[]
+  homeroomNotes       HomeroomNote[]
+  reportReviews       ReportReview[]
+  reportCardWorkflows ReportCardWorkflow[]
+
+  @@unique([classId, academicPeriodId])
+  @@unique([teacherId, academicPeriodId])
+  @@index([schoolId])
+}
+
+model Curriculum {
+  id             String   @id @default(cuid())
+  schoolId       String
+  academicYearId String
+  code           String   @db.VarChar(32)
+  name           String
+  description    String?  @db.VarChar(500)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  school              School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear        AcademicYear           @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  placements          CurriculumPlacement[]
+  learningObjectives  LearningObjective[]
+  materialScopes      MaterialScope[]
+  gradeReportPolicies GradeReportPolicy[]
+
+  @@unique([schoolId, academicYearId, code])
+  @@index([schoolId, name])
+}
+
+model CurriculumPlacement {
+  id           String   @id @default(cuid())
+  schoolId     String
+  curriculumId String
+  classId      String
+  subjectId    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  school     School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  curriculum Curriculum  @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  class      SchoolClass @relation(fields: [classId], references: [id], onDelete: Restrict)
+  subject    Subject     @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@unique([curriculumId, classId, subjectId])
+  @@index([schoolId])
+  @@index([classId, subjectId])
+}
+
+model LearningObjective {
+  id                   String   @id @default(cuid())
+  schoolId             String
+  teachingAssignmentId String
+  curriculumId         String?
+  code                 String   @db.VarChar(32)
+  description          String   @db.VarChar(1000)
+  sequence             Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  school               School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignment   TeachingAssignment   @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
+  curriculum           Curriculum?          @relation(fields: [curriculumId], references: [id], onDelete: SetNull)
+  formativeAssessment  FormativeAssessment?
+
+  @@unique([teachingAssignmentId, code])
+  @@index([schoolId, sequence])
+  @@index([curriculumId])
+}
+
+model MaterialScope {
+  id                   String   @id @default(cuid())
+  schoolId             String
+  teachingAssignmentId String
+  curriculumId         String?
+  code                 String   @db.VarChar(32)
+  description          String   @db.VarChar(1000)
+  sequence             Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  school               School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignment   TeachingAssignment   @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
+  curriculum           Curriculum?          @relation(fields: [curriculumId], references: [id], onDelete: SetNull)
+  summativeAssessment  SummativeAssessment?
+
+  @@unique([teachingAssignmentId, code])
+  @@index([schoolId, sequence])
+  @@index([curriculumId])
+}
+
+/// Jangkar penilaian formatif, satu per tujuan pembelajaran.
+model FormativeAssessment {
+  id                  String   @id @default(cuid())
+  schoolId            String
+  learningObjectiveId String   @unique
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  school            School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  learningObjective LearningObjective @relation(fields: [learningObjectiveId], references: [id], onDelete: Restrict)
+  scores            FormativeScore[]
+
+  @@index([schoolId])
+}
+
+/// Jangkar penilaian sumatif, satu per lingkup materi.
+model SummativeAssessment {
+  id              String   @id @default(cuid())
+  schoolId        String
+  materialScopeId String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  school        School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  materialScope MaterialScope @relation(fields: [materialScopeId], references: [id], onDelete: Restrict)
+  scores        SummativeScore[]
+
+  @@index([schoolId])
+}
+
+model FormativeScore {
+  id                    String      @id @default(cuid())
+  schoolId              String
+  formativeAssessmentId String
+  studentId             String
+  uh                    Decimal?    @db.Decimal(5, 2)
+  t1                    Decimal?    @db.Decimal(5, 2)
+  t2                    Decimal?    @db.Decimal(5, 2)
+  t3                    Decimal?    @db.Decimal(5, 2)
+  remedial              Decimal?    @db.Decimal(5, 2)
+  status                GradeStatus @default(DRAFT)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  school              School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  formativeAssessment FormativeAssessment @relation(fields: [formativeAssessmentId], references: [id], onDelete: Restrict)
+  student             Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([formativeAssessmentId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
+}
+
+model SummativeScore {
+  id                    String      @id @default(cuid())
+  schoolId              String
+  summativeAssessmentId String
+  studentId             String
+  score                 Decimal?    @db.Decimal(5, 2)
+  remedial              Decimal?    @db.Decimal(5, 2)
+  status                GradeStatus @default(DRAFT)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  school              School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  summativeAssessment SummativeAssessment @relation(fields: [summativeAssessmentId], references: [id], onDelete: Restrict)
+  student             Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([summativeAssessmentId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
+}
+
+model TermExamScore {
+  id                   String      @id @default(cuid())
+  schoolId             String
+  teachingAssignmentId String
+  studentId            String
+  sts                  Decimal?    @db.Decimal(5, 2)
+  sas                  Decimal?    @db.Decimal(5, 2)
+  status               GradeStatus @default(DRAFT)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  school             School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
+  student            Student            @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([teachingAssignmentId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  schoolId   String?
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?  @db.VarChar(64)
+  userAgent  String?  @db.VarChar(512)
+  createdAt  DateTime @default(now())
+
+  school School? @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  actor  User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action])
+}
+
+model ClassScheduleSlot {
+  id                   String   @id @default(cuid())
+  schoolId             String
+  teachingAssignmentId String
+  label                String   @db.VarChar(80)
+  dayOfWeek            Int?
+  startTime            String?  @db.VarChar(5)
+  endTime              String?  @db.VarChar(5)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment  @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
+  meetings           AttendanceMeeting[]
+
+  @@index([schoolId])
+  @@index([teachingAssignmentId])
+}
+
+model AttendanceMeeting {
+  id                   String                  @id @default(cuid())
+  schoolId             String
+  teachingAssignmentId String
+  meetingDate          DateTime                @db.Date
+  sessionNo            Int
+  scheduleSlotId       String?
+  note                 String?                 @db.VarChar(200)
+  marker               String?                 @db.VarChar(40)
+  status               AttendanceMeetingStatus @default(DRAFT)
+  finalizedAt          DateTime?
+  finalizedById        String?
+  createdById          String
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  school             School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment     @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
+  scheduleSlot       ClassScheduleSlot?     @relation(fields: [scheduleSlotId], references: [id], onDelete: SetNull)
+  records            AttendanceRecord[]
+  corrections        AttendanceCorrection[]
+
+  @@unique([teachingAssignmentId, meetingDate, sessionNo])
+  @@index([schoolId, meetingDate])
+  @@index([teachingAssignmentId, status])
+}
+
+model AttendanceRecord {
+  id        String          @id @default(cuid())
+  schoolId  String
+  meetingId String
+  studentId String
+  status    AttendanceMark?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  school  School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  meeting AttendanceMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  student Student           @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([meetingId, studentId])
+  @@index([schoolId, studentId])
+}
+
+model AttendanceCorrection {
+  id        String   @id @default(cuid())
+  schoolId  String
+  meetingId String
+  reason    String   @db.VarChar(500)
+  actorId   String
+  createdAt DateTime @default(now())
+
+  school  School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  meeting AttendanceMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, meetingId])
+}
+
+model DailyAttendance {
+  id                   String                  @id @default(cuid())
+  schoolId             String
+  homeroomAssignmentId String
+  attendanceDate       DateTime                @db.Date
+  status               AttendanceMeetingStatus @default(DRAFT)
+  finalizedAt          DateTime?
+  finalizedById        String?
+  createdById          String
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  school      School                      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  homeroom    HomeroomAssignment          @relation(fields: [homeroomAssignmentId], references: [id], onDelete: Restrict)
+  records     DailyAttendanceRecord[]
+  corrections DailyAttendanceCorrection[]
+
+  @@unique([homeroomAssignmentId, attendanceDate])
+  @@index([schoolId, attendanceDate])
+  @@index([homeroomAssignmentId, status])
+}
+
+model DailyAttendanceRecord {
+  id                String          @id @default(cuid())
+  schoolId          String
+  dailyAttendanceId String
+  studentId         String
+  status            AttendanceMark?
+  note              String?         @db.VarChar(200)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  school          School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  dailyAttendance DailyAttendance @relation(fields: [dailyAttendanceId], references: [id], onDelete: Cascade)
+  student         Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([dailyAttendanceId, studentId])
+  @@index([schoolId, studentId])
+}
+
+model DailyAttendanceCorrection {
+  id                String   @id @default(cuid())
+  schoolId          String
+  dailyAttendanceId String
+  reason            String   @db.VarChar(500)
+  actorId           String
+  createdAt         DateTime @default(now())
+
+  school          School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  dailyAttendance DailyAttendance @relation(fields: [dailyAttendanceId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, dailyAttendanceId])
+}
+
+model AttendanceCompletenessRule {
+  id               String                        @id @default(cuid())
+  schoolId         String
+  academicPeriodId String
+  status           AttendanceCompletenessStatus  @default(DRAFT)
+  activatedAt      DateTime?
+  activatedById    String?
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+
+  school         School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicPeriod AcademicPeriod           @relation(fields: [academicPeriodId], references: [id], onDelete: Restrict)
+  days           AttendanceCalendarDay[]
+
+  @@unique([schoolId, academicPeriodId])
+  @@index([schoolId, status])
+}
+
+model AttendanceCalendarDay {
+  id        String                 @id @default(cuid())
+  schoolId  String
+  ruleId    String
+  date      DateTime               @db.Date
+  kind      AttendanceCalendarKind
+  note      String?                @db.VarChar(200)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  school School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  rule   AttendanceCompletenessRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, date])
+  @@index([schoolId, date])
+}
+
+model CompetencyDescription {
+  id                   String                   @id @default(cuid())
+  schoolId             String
+  teachingAssignmentId String                   @unique
+  status               AssessmentWorkflowStatus @default(DRAFT)
+  submittedAt          DateTime?
+  submittedById        String?
+  recipientTeacherId   String?
+  revisionReason       String?                  @db.VarChar(500)
+  revisionRequestedAt  DateTime?
+  decidedAt            DateTime?
+  decidedById          String?
+  decisionNote         String?                  @db.VarChar(500)
+  evidenceSnapshot     Json?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  school             School                        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment            @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
+  recipient          Teacher?                      @relation("CompetencyDescriptionRecipient", fields: [recipientTeacherId], references: [id], onDelete: SetNull)
+  entries            CompetencyDescriptionEntry[]
+
+  @@index([schoolId, status])
+  @@index([recipientTeacherId])
+}
+
+model CompetencyDescriptionEntry {
+  id            String   @id @default(cuid())
+  schoolId      String
+  descriptionId String
+  studentId     String
+  text          String   @db.VarChar(2000)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  school      School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  description CompetencyDescription @relation(fields: [descriptionId], references: [id], onDelete: Cascade)
+  student     Student               @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([descriptionId, studentId])
+  @@index([schoolId, studentId])
+}
+
+model HomeroomNote {
+  id                   String             @id @default(cuid())
+  schoolId             String
+  homeroomAssignmentId String
+  classId              String
+  studentId            String
+  academicYearId       String
+  academicPeriodId     String
+  text                 String             @db.VarChar(2000)
+  status               HomeroomNoteStatus @default(DRAFT)
+  finalizedAt          DateTime?
+  finalizedById        String?
+  createdById          String
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  school         School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  homeroom       HomeroomAssignment       @relation(fields: [homeroomAssignmentId], references: [id], onDelete: Restrict)
+  class          SchoolClass              @relation(fields: [classId], references: [id], onDelete: Restrict)
+  student        Student                  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  academicYear   AcademicYear             @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  academicPeriod AcademicPeriod           @relation(fields: [academicPeriodId], references: [id], onDelete: Restrict)
+  corrections    HomeroomNoteCorrection[]
+
+  @@unique([studentId, academicPeriodId])
+  @@index([schoolId, classId, academicPeriodId])
+  @@index([homeroomAssignmentId, status])
+}
+
+model HomeroomNoteCorrection {
+  id           String   @id @default(cuid())
+  schoolId     String
+  noteId       String
+  reason       String   @db.VarChar(500)
+  previousText String   @db.VarChar(2000)
+  nextText     String   @db.VarChar(2000)
+  actorId      String
+  createdAt    DateTime @default(now())
+
+  school School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  note   HomeroomNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, noteId])
+}
+
+model StudentReportActivity {
+  id               String  @id @default(cuid())
+  schoolId         String
+  studentId        String
+  academicPeriodId String
+  pklText          String? @db.VarChar(2000)
+  extracurricularText String? @db.VarChar(2000)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student        Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  academicPeriod AcademicPeriod @relation(fields: [academicPeriodId], references: [id], onDelete: Restrict)
+
+  @@unique([studentId, academicPeriodId])
+  @@index([schoolId, academicPeriodId])
+}
+
+model ReportReview {
+  id                   String   @id @default(cuid())
+  schoolId             String
+  studentId            String
+  classId              String
+  homeroomAssignmentId String
+  academicPeriodId     String
+  fingerprint          String   @db.VarChar(64)
+  reviewedById         String
+  reviewedAt           DateTime @default(now())
+  createdAt            DateTime @default(now())
+
+  school         School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student        Student            @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  class          SchoolClass        @relation(fields: [classId], references: [id], onDelete: Restrict)
+  homeroom       HomeroomAssignment @relation(fields: [homeroomAssignmentId], references: [id], onDelete: Restrict)
+  academicPeriod AcademicPeriod     @relation(fields: [academicPeriodId], references: [id], onDelete: Restrict)
+
+  @@index([schoolId, studentId, academicPeriodId, reviewedAt])
+}
+
+model ReportCardWorkflow {
+  id                   String           @id @default(cuid())
+  schoolId             String
+  studentId            String
+  classId              String
+  homeroomAssignmentId String
+  academicYearId       String
+  academicPeriodId     String
+  status               ReportCardStatus @default(DRAF)
+  fingerprint          String?          @db.VarChar(64)
+  submittedAt          DateTime?
+  submittedById        String?
+  wakakurDecidedAt     DateTime?
+  wakakurDecidedById   String?
+  wakakurReason        String?          @db.VarChar(500)
+  endorsedAt           DateTime?
+  endorsedById         String?
+  principalReason      String?          @db.VarChar(500)
+  activeSnapshotId     String?          @unique
+  reviewResetAt        DateTime?
+  version              Int              @default(0)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  school         School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student        Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  class          SchoolClass         @relation(fields: [classId], references: [id], onDelete: Restrict)
+  homeroom       HomeroomAssignment  @relation(fields: [homeroomAssignmentId], references: [id], onDelete: Restrict)
+  academicYear   AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  academicPeriod AcademicPeriod      @relation(fields: [academicPeriodId], references: [id], onDelete: Restrict)
+  activeSnapshot ReportCardSnapshot? @relation("ActiveReportSnapshot", fields: [activeSnapshotId], references: [id], onDelete: SetNull)
+  snapshots      ReportCardSnapshot[] @relation("ReportSnapshotHistory")
+  events         ReportCardEvent[]
+
+  @@unique([studentId, academicPeriodId])
+  @@index([schoolId, academicPeriodId, status])
+}
+
+model ReportCardSnapshot {
+  id               String   @id @default(cuid())
+  schoolId         String
+  workflowId       String
+  studentId        String
+  academicPeriodId String
+  version          Int
+  fingerprint      String   @db.VarChar(64)
+  payload          Json
+  endorsedById     String
+  endorsedAt       DateTime
+  createdAt        DateTime @default(now())
+
+  school         School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  workflow       ReportCardWorkflow @relation("ReportSnapshotHistory", fields: [workflowId], references: [id], onDelete: Restrict)
+  student        Student            @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  academicPeriod AcademicPeriod     @relation(fields: [academicPeriodId], references: [id], onDelete: Restrict)
+  activeFor      ReportCardWorkflow? @relation("ActiveReportSnapshot")
+
+  @@unique([studentId, academicPeriodId, version])
+  @@index([workflowId])
+}
+
+model ReportCardEvent {
+  id          String            @id @default(cuid())
+  schoolId    String
+  workflowId  String
+  action      String            @db.VarChar(64)
+  fromStatus  ReportCardStatus?
+  toStatus    ReportCardStatus
+  actorId     String
+  reason      String?           @db.VarChar(500)
+  fingerprint String?           @db.VarChar(64)
+  createdAt   DateTime          @default(now())
+
+  school   School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  workflow ReportCardWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, workflowId, createdAt])
+}
+
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String
+  tokenHash    String    @unique
+  familyId     String
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?   @unique
+  ipAddress    String?   @db.VarChar(64)
+  userAgent    String?   @db.VarChar(512)
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, familyId])
+  @@index([expiresAt])
+}

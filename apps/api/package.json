@@ -1,0 +1,45 @@
+{
+  "name": "@sims/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test --test-concurrency=1 tests/auth.test.ts tests/tenant.test.ts tests/academic.test.ts tests/curriculum.test.ts tests/teacher-account.test.ts tests/grade.test.ts tests/grade-workflow.test.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "qc:accounts": "tsx scripts/recover-operator-accounts.ts",
+    "qc:grade": "tsx scripts/qc-03a1.ts",
+    "qc:grade:cleanup": "tsx scripts/qc-03a1.ts --cleanup"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/multipart": "^9.0.3",
+    "@fastify/rate-limit": "^10.3.0",
+    "@node-rs/argon2": "^2.0.2",
+    "@prisma/client": "^6.19.0",
+    "@sims/shared": "*",
+    "dotenv": "^16.6.1",
+    "exceljs": "^4.4.0",
+    "fastify": "^5.6.1",
+    "jsonwebtoken": "^9.0.2",
+    "pdfkit": "^0.17.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.0",
+    "@types/pdfkit": "^0.17.3",
+    "prisma": "^6.19.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
