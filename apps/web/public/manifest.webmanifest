@@ -1,0 +1,10 @@
+{
+  "name": "SAKTI-Ku — Sistem Informasi Manajemen SMK",
+  "short_name": "SAKTI-Ku",
+  "description": "Super-App Manajemen Sekolah & Ekosistem Vokasi SMK PGRI Pasir Sakti",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D1B4C",
+  "theme_color": "#0D1B4C",
+  "orientation": "portrait"
+}

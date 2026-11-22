@@ -176,7 +176,7 @@ export function GradeStatusPage({ view }: { view: "guru" | "wali" | "staff" }) {
         </div>
       )}
       {resolveTarget ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 px-4">
           <div role="dialog" aria-modal="true" aria-labelledby="legacy-resolve-title" className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
             <h2 id="legacy-resolve-title" className="text-lg font-semibold text-slate-900">Selesaikan status lama?</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{resolveTarget.className} · {resolveTarget.subjectName} · {resolveTarget.teacherName}. Baris pengiriman lama dan seluruh nilai tetap tersimpan.</p>

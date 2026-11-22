@@ -6,6 +6,13 @@ export const ROLE_CODES = [
   "GURU_MAPEL",
   "WALI_KELAS",
   "TU",
+  "KOMITE_SEKOLAH",
+  "WAKA_KESISWAAN",
+  "WAKA_SARPRAS",
+  "WAKA_HUMAS",
+  "BENDAHARA",
+  "OPERATOR_SEKOLAH",
+  "KAPROG",
 ] as const;
 
 export type RoleCode = (typeof ROLE_CODES)[number];
@@ -60,6 +67,48 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     code: "TU",
     name: "Tata Usaha",
     description: "Petugas tata usaha sekolah",
+    scope: "SCHOOL",
+  },
+  {
+    code: "KOMITE_SEKOLAH",
+    name: "Komite Sekolah",
+    description: "Unsur komite pertimbangan dan pengawasan sekolah",
+    scope: "SCHOOL",
+  },
+  {
+    code: "WAKA_KESISWAAN",
+    name: "Wakil Kepala Kesiswaan",
+    description: "Wakil kepala sekolah bidang kesiswaan",
+    scope: "SCHOOL",
+  },
+  {
+    code: "WAKA_SARPRAS",
+    name: "Wakil Kepala Sarana Prasarana",
+    description: "Wakil kepala sekolah bidang sarana dan prasarana",
+    scope: "SCHOOL",
+  },
+  {
+    code: "WAKA_HUMAS",
+    name: "Wakil Kepala Humas",
+    description: "Wakil kepala sekolah bidang hubungan masyarakat dan industri",
+    scope: "SCHOOL",
+  },
+  {
+    code: "BENDAHARA",
+    name: "Bendahara Sekolah",
+    description: "Pengelola administrasi keuangan, BOS, komite, atau barang",
+    scope: "SCHOOL",
+  },
+  {
+    code: "OPERATOR_SEKOLAH",
+    name: "Operator Sekolah",
+    description: "Operator pendataan dan administrasi sistem sekolah",
+    scope: "SCHOOL",
+  },
+  {
+    code: "KAPROG",
+    name: "Kepala Program Keahlian",
+    description: "Koordinator jurusan / program keahlian SMK",
     scope: "SCHOOL",
   },
 ];
@@ -597,4 +646,149 @@ export type ApiErrorBody = {
     message: string;
     details?: unknown;
   };
+};
+
+export type PayrollPeriodStatus = "DRAFT" | "TERBIT" | "SELESAI";
+export type PayrollSlipStatus = "DRAFT" | "DITERBITKAN" | "DIBAYAR";
+
+export type PayrollPeriodDto = {
+  id: string;
+  schoolId: string;
+  month: number;
+  year: number;
+  title: string;
+  ratePerJtm: number;
+  ratePerHadir: number;
+  status: PayrollPeriodStatus;
+  notes: string | null;
+  slipCount?: number;
+  totalNetPay?: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PayrollSlipDto = {
+  id: string;
+  schoolId: string;
+  periodId: string;
+  userId: string;
+  employeeName: string;
+  roleLabel: string;
+  totalHadirDays: number;
+  totalJtmHours: number;
+  baseHonor: number;
+  attendanceBonus: number;
+  positionBonus: number;
+  deductionAmount: number;
+  deductionNote: string | null;
+  netPay: number;
+  status: PayrollSlipStatus;
+  approvedById: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  period?: {
+    id: string;
+    month: number;
+    year: number;
+    title: string;
+    status: PayrollPeriodStatus;
+  };
+};
+
+export type ToolCondition = "BAIK" | "PERLU_PERBAIKAN" | "RUSAK";
+export type ToolLoanStatus = "DIPINJAM" | "DIKEMBALIKAN";
+export type TracerStatus = "BEKERJA" | "WIRAUSAHA" | "KULIAH" | "BELUM_BEKERJA";
+
+export type WorkshopToolDto = {
+  id: string;
+  schoolId: string;
+  assetCode: string;
+  name: string;
+  labName: string;
+  totalQty: number;
+  availableQty: number;
+  condition: ToolCondition;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ToolLoanDto = {
+  id: string;
+  schoolId: string;
+  toolId: string;
+  borrowerName: string;
+  borrowerRole: string;
+  qty: number;
+  purpose: string | null;
+  borrowedAt: string;
+  returnedAt: string | null;
+  status: ToolLoanStatus;
+  tool?: {
+    id: string;
+    assetCode: string;
+    name: string;
+    labName: string;
+  };
+};
+
+export type BkkJobPostDto = {
+  id: string;
+  schoolId: string;
+  companyName: string;
+  positionTitle: string;
+  location: string;
+  majorTarget: string | null;
+  deadline: string | null;
+  description: string;
+  contactInfo: string | null;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type AlumniTracerDto = {
+  id: string;
+  schoolId: string;
+  alumniName: string;
+  graduationYear: number;
+  majorName: string;
+  status: TracerStatus;
+  institutionName: string | null;
+  positionOrStudy: string | null;
+  phone: string | null;
+  createdAt: string;
+};
+
+export type PpdbStatus = "MENDAFTAR" | "TERVERIFIKASI" | "DITERIMA" | "CADANGAN" | "DITOLAK";
+export type WhistleblowerCategory = "PERUNDUNGAN_BULLYING" | "KEKERASAN_FISIK_VERBAL" | "FASILITAS_KEAMANAN" | "LAINNYA";
+export type WhistleblowerStatus = "BARU" | "DITINDAKLANJUTI" | "SELESAI";
+
+export type PpdbApplicantDto = {
+  id: string;
+  schoolId: string;
+  registrationNo: string;
+  fullName: string;
+  nisn: string | null;
+  originSchool: string;
+  chosenMajor: string;
+  parentPhone: string;
+  averageScore: number | null;
+  status: PpdbStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AnonymousReportDto = {
+  id: string;
+  schoolId: string;
+  ticketCode: string;
+  category: WhistleblowerCategory;
+  incidentPlace: string | null;
+  description: string;
+  status: WhistleblowerStatus;
+  counselorReply: string | null;
+  createdAt: string;
+  updatedAt: string;
 };

@@ -327,7 +327,7 @@ export function DataScreen({
         </div>
       </div>
       {editing !== undefined ? (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/50 p-3 sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center">
           <form onSubmit={(event) => void save(event)} role="dialog" aria-modal="true" className="flex max-h-[min(90dvh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
             <header className="border-b border-slate-200 px-5 py-4">
               <h2 className="text-lg font-semibold">{editing ? "Ubah data" : "Tambah data"}</h2>
@@ -360,7 +360,7 @@ export function DataScreen({
         </div>
       ) : null}
       {confirmId ? (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5">
             <h2 className="text-lg font-semibold">Hapus data ini?</h2>
             <p className="mt-2 text-sm text-slate-500">Data yang masih dipakai tidak dapat dihapus.</p>

@@ -242,7 +242,7 @@ export function SchoolUsersPage() {
         </div>
       </div>
       {draft ? (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/50 p-3 sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center">
           <form role="dialog" aria-modal="true" className="flex max-h-[min(90dvh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl" onSubmit={(event) => { event.preventDefault(); void save(); }}>
             <header className="border-b border-slate-200 px-5 py-4">
               <h2 className="text-base font-semibold text-slate-900">{editing ? "Ubah peran" : "Pengguna baru"}</h2>

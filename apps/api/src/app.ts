@@ -13,6 +13,15 @@ import type { AuthState } from "./lib/auth-state.ts";
 import { academicRoutes } from "./modules/academic/academic.routes.ts";
 import { schoolUserRoutes } from "./modules/access/school-users.routes.ts";
 import { authRoutes } from "./modules/auth/auth.routes.ts";
+import { hrAttendanceRoutes } from "./modules/hr-attendance/hr-attendance.routes.ts";
+import { characterCounselingRoutes } from "./modules/character-counseling/character-counseling.routes.ts";
+import { journalRoutes } from "./modules/journal/journal.routes.ts";
+import { financeRoutes } from "./modules/finance/finance.routes.ts";
+import { internshipRoutes } from "./modules/internship/internship.routes.ts";
+import { payrollRoutes } from "./modules/payroll/payroll.routes.ts";
+import { vokasiRoutes } from "./modules/vokasi/vokasi.routes.ts";
+import { publicPortalRoutes } from "./modules/public-portal/public-portal.routes.ts";
+import { leaveRoutes } from "./modules/leave/leave.routes.ts";
 import { schoolRoutes } from "./modules/schools/school.routes.ts";
 
 declare module "fastify" {
@@ -127,6 +136,15 @@ export async function buildApp(options: BuildAppOptions) {
   await app.register(schoolRoutes, { prefix: "/api/v1" });
   await app.register(academicRoutes, { prefix: "/api/v1" });
   await app.register(schoolUserRoutes, { prefix: "/api/v1" });
+  await app.register(hrAttendanceRoutes, { prefix: "/api/v1" });
+  await app.register(journalRoutes, { prefix: "/api/v1" });
+  await app.register(leaveRoutes, { prefix: "/api/v1" });
+  await app.register(characterCounselingRoutes, { prefix: "/api/v1" });
+  await app.register(financeRoutes, { prefix: "/api/v1" });
+  await app.register(internshipRoutes, { prefix: "/api/v1" });
+  await app.register(payrollRoutes, { prefix: "/api/v1" });
+  await app.register(vokasiRoutes, { prefix: "/api/v1" });
+  await app.register(publicPortalRoutes, { prefix: "/api/v1" });
 
   return app;
 }

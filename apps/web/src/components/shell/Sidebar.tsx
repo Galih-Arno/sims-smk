@@ -64,6 +64,13 @@ function adminGroups(showImport: boolean, showPolicy: boolean, showUsers: boolea
         { kind: "link", to: "/profil", label: "Profil Sekolah" },
         { kind: "link", to: "/tahun-pelajaran", label: "Tahun Pelajaran" },
         { kind: "link", to: "/semester", label: "Semester" },
+        { kind: "link", to: "/keuangan/payroll", label: "Keuangan & E-Payroll" },
+        { kind: "link", to: "/vokasi/inventaris", label: "Bengkel & Inventaris Alat" },
+        { kind: "link", to: "/vokasi/bkk", label: "BKK & Tracer Study" },
+        { kind: "link", to: "/ppdb", label: "PPDB Online" },
+        { kind: "link", to: "/kesiswaan/whistleblower", label: "Anti-Bullying (Anonim)" },
+      { kind: "link", to: "/ppdb", label: "PPDB Online" },
+      { kind: "link", to: "/kesiswaan/whistleblower", label: "Anti-Bullying (Anonim)" },
       ],
     },
     {
@@ -130,7 +137,16 @@ const guruGroups: Group[] = [
     icon: "task",
     items: [
       { kind: "link", to: "/guru/absensi", label: "Absensi Siswa" },
-      { kind: "soon", label: "Jurnal Mengajar" },
+      { kind: "link", to: "/guru/jurnal", label: "E-Jurnal Mengajar" },
+      { kind: "link", to: "/pegawai/presensi", label: "Presensi Pegawai (GPS)" },
+      { kind: "link", to: "/pegawai/izin", label: "Cuti, Izin & SPD" },
+      { kind: "link", to: "/pegawai/slip-gaji", label: "Slip Gaji Digital" },
+      { kind: "link", to: "/kesiswaan/karakter-bk", label: "Karakter & E-Counseling" },
+      { kind: "link", to: "/kesiswaan/pkl", label: "Prakerin / PKL" },
+      { kind: "link", to: "/vokasi/inventaris", label: "Bengkel & Inventaris Alat" },
+      { kind: "link", to: "/vokasi/bkk", label: "BKK & Tracer Study" },
+      { kind: "link", to: "/keuangan/spp", label: "Keuangan & SPP" },
+      { kind: "link", to: "/wali/portal", label: "Portal Wali Siswa" },
     ],
   },
   {
@@ -138,6 +154,7 @@ const guruGroups: Group[] = [
     label: "Akun",
     icon: "user",
     items: [
+      { kind: "link", to: "/pegawai/presensi", label: "Presensi Pegawai (GPS)" },
       { kind: "link", to: "/akun", label: "Profil Saya", end: true },
       { kind: "link", to: "/akun/sandi", label: "Ubah Password" },
     ],
@@ -204,9 +221,9 @@ export function Sidebar({
       className={`app-chrome fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-navy-950 text-slate-100 shadow-xl transition-transform duration-200 ${mobileOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 ${collapsed ? "md:w-20" : "md:w-64"}`}
     >
       <div className="flex items-center gap-2.5 border-b border-white/10 px-3 py-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-teal-700 text-sm font-bold">SM</span>
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-gold-500/60 bg-navy-900 text-gold-500 text-sm font-bold">SK</span>
         <div className={collapsed ? "md:hidden" : ""}>
-          <p className="text-sm font-semibold tracking-wide">SIMS SMK</p>
+          <p className="text-sm font-semibold tracking-wide">SAKTI-Ku</p>
           <p className="text-xs text-slate-400">{PORTAL_LABEL[portal]}</p>
         </div>
       </div>
@@ -265,7 +282,7 @@ export function Sidebar({
                           title={item.label}
                           onClick={onNavigate}
                           className={({ isActive }) =>
-                            `block min-h-10 truncate rounded-lg px-3 py-2 text-sm transition-colors duration-200 ${isActive ? "bg-teal-700 font-semibold text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"}`
+                            `block min-h-10 truncate rounded-lg px-3 py-2 text-sm transition-colors duration-200 ${isActive ? "bg-gold-500 font-semibold text-navy-950 shadow-sm" : "text-slate-300 hover:bg-white/10 hover:text-white"}`
                           }
                         >
                           {item.label}

@@ -326,7 +326,7 @@ function PlanList({
         </div>
       </div>
       {editing !== undefined ? (
-        <div className="fixed inset-0 z-20 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
           <form onSubmit={(event) => void save(event)} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
             <h2 className="text-lg font-semibold">{editing ? "Ubah data" : "Tambah data"}</h2>
             <label className="mt-4 block text-sm font-medium text-slate-700">Kode
@@ -346,7 +346,7 @@ function PlanList({
         </div>
       ) : null}
       {confirmId ? (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5">
             <h2 className="text-lg font-semibold">Hapus data ini?</h2>
             <p className="mt-2 text-sm text-slate-500">Jumlah TP dan LM tidak dibatasi. Data yang sudah dipakai penilaian tidak dapat dihapus.</p>

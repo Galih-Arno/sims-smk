@@ -5,6 +5,9 @@ import { GradeMarkIcon, GradeMarkLegend, gradeMarkLabel, type CellMark } from ".
 import { ApiClientError, api } from "../lib/api.ts";
 import { useAuth } from "../lib/auth.tsx";
 import { usePortal } from "../lib/portal.tsx";
+import { GradeImportModal } from "../components/GradeImportModal.tsx";
+import { AppPageShell } from "../components/shell/AppPageShell.tsx";
+import { parseGradeFile, type DetectedImportColumn, type ParsedWorkbookResult } from "../lib/gradeImport.ts";
 import { useSchoolScope } from "../lib/school.tsx";
 
 const EMPTY_ASSIGNMENT = "Anda belum memiliki penugasan mengajar. Silakan hubungi Wakasek Kurikulum.";
@@ -118,7 +121,12 @@ export function GradePage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [saveFailed, setSaveFailed] = useState(false);
-  const [dialog, setDialog] = useState<"submit" | "revision" | null>(null);
+  const [dialog, setDialog] = useState<"submit" | "revision" | "import" | null>(null);
+  const [importData, setImportData] = useState<ParsedWorkbookResult | null>(null);
+  const [importSheetName, setImportSheetName] = useState("__ALL__");
+  const [detectedCols, setDetectedCols] = useState<DetectedImportColumn[]>([]);
+  const [selectedColKeys, setSelectedColKeys] = useState<string[]>([]);
+  const [importingMulti, setImportingMulti] = useState(false);
   const [reason, setReason] = useState("");
   const [acting, setActing] = useState(false);
   const [leaveIntent, setLeaveIntent] = useState<LeaveIntent | null>(null);
@@ -263,6 +271,176 @@ export function GradePage() {
     if (intent.kind === "assignment") setAssignmentId(intent.id);
   }
 
+  function openImportDialog() {
+    setImportData(null);
+    setImportSheetName("__ALL__");
+    setDetectedCols([]);
+    setSelectedColKeys([]);
+    setDialog("import");
+  }
+
+  function handleSelectImportSheet(nextSheet: string, data: ParsedWorkbookResult | null = importData) {
+    setImportSheetName(nextSheet);
+    if (!data) return;
+    const cols = nextSheet === "__ALL__" ? data.allColumns : (data.columnsBySheet[nextSheet] ?? []);
+    setDetectedCols(cols);
+    setSelectedColKeys(cols.filter((c) => c.matchedCount > 0).map((c) => c.key));
+  }
+
+  async function handleImportFile(file: File) {
+    if (!sheet) return;
+    const parsed = await parseGradeFile(file, sheet.students);
+    setImportData(parsed);
+    const defaultTarget = parsed.sheetNames.length > 1 ? "__ALL__" : (parsed.sheetNames[0] ?? "__ALL__");
+    handleSelectImportSheet(defaultTarget, parsed);
+  }
+
+  async function applyMultiColumnImport() {
+    if (!sheet || !schoolId) return;
+    const chosen = detectedCols.filter((c) => selectedColKeys.includes(c.key) && c.matchedCount > 0);
+    if (chosen.length === 0) return;
+    setImportingMulti(true);
+    setError("");
+    setMessage("");
+    try {
+      let currentSheet = sheet;
+      const activeTeaching = teachings.find((t) => t.id === currentSheet.assignmentId);
+
+      // Buat TP otomatis jika belum ada di server
+      const neededTps = new Map<string, string>();
+      for (const col of chosen) {
+        if (col.category === "formative" && col.tpCode) {
+          const exists = currentSheet.formative.some((f) => f.code.trim().toUpperCase() === col.tpCode!.toUpperCase());
+          if (!exists && !neededTps.has(col.tpCode.toUpperCase())) {
+            neededTps.set(col.tpCode.toUpperCase(), col.tpDescription || `Tujuan Pembelajaran ${col.tpCode}`);
+          }
+        }
+      }
+      if (neededTps.size > 0 && activeTeaching) {
+        let seq = currentSheet.formative.length + 1;
+        for (const [code, description] of neededTps.entries()) {
+          await api(`/api/v1/schools/${schoolId}/learning-objectives`, {
+            method: "POST",
+            body: JSON.stringify({
+              classId: activeTeaching.classId,
+              subjectId: activeTeaching.subjectId,
+              academicPeriodId: activeTeaching.academicPeriodId,
+              code,
+              description,
+              sequence: seq,
+            }),
+          });
+          seq += 1;
+        }
+        const refreshed = await api<{ sheet: GradeSheetDto }>(`/api/v1/schools/${schoolId}/teaching-assignments/${currentSheet.assignmentId}/scores`);
+        currentSheet = refreshed.sheet;
+      }
+
+      // Buat Lingkup Materi otomatis jika ada kolom Sumatif
+      if (chosen.some((c) => c.category === "summative") && currentSheet.summative.length === 0 && activeTeaching) {
+        await api(`/api/v1/schools/${schoolId}/material-scopes`, {
+          method: "POST",
+          body: JSON.stringify({
+            classId: activeTeaching.classId,
+            subjectId: activeTeaching.subjectId,
+            academicPeriodId: activeTeaching.academicPeriodId,
+            code: "LM 1",
+            description: "Lingkup Materi 1 (Impor Otomatis)",
+            sequence: 1,
+          }),
+        });
+        const refreshed = await api<{ sheet: GradeSheetDto }>(`/api/v1/schools/${schoolId}/teaching-assignments/${currentSheet.assignmentId}/scores`);
+        currentSheet = refreshed.sheet;
+      }
+
+      // Gabungkan seluruh draft & nilai impor
+      const nextFormative: Record<string, string> = { ...formativeDraft };
+      for (const col of currentSheet.formative) {
+        for (const cell of col.cells) {
+          for (const field of ["uh", "t1", "t2", "t3", "remedial"] as const) {
+            const k = `${col.learningObjectiveId}:${cell.studentId}:${field}`;
+            if (nextFormative[k] === undefined) nextFormative[k] = formatScore(cell[field]);
+          }
+        }
+      }
+      const nextSummative: Record<string, string> = { ...summativeDraft };
+      for (const col of currentSheet.summative) {
+        for (const cell of col.cells) {
+          const k = `${col.materialScopeId}:${cell.studentId}:score`;
+          if (nextSummative[k] === undefined) nextSummative[k] = formatScore(cell.score);
+        }
+      }
+      const nextTerm: Record<string, string> = { ...termDraft };
+      for (const cell of currentSheet.termExams) {
+        for (const field of ["sts", "sas"] as const) {
+          const k = `${cell.studentId}:${field}`;
+          if (nextTerm[k] === undefined) nextTerm[k] = formatScore(cell[field]);
+        }
+      }
+
+      let appliedCells = 0;
+      for (const col of chosen) {
+        if (col.category === "formative" && col.tpCode) {
+          const targetObj = currentSheet.formative.find((f) => f.code.trim().toUpperCase() === col.tpCode!.toUpperCase());
+          if (!targetObj) continue;
+          for (const [studentId, val] of Object.entries(col.values)) {
+            nextFormative[`${targetObj.learningObjectiveId}:${studentId}:${col.field}`] = val;
+            appliedCells += 1;
+          }
+        } else if (col.category === "summative" && currentSheet.summative[0]) {
+          const targetScope = currentSheet.summative[0];
+          for (const [studentId, val] of Object.entries(col.values)) {
+            nextSummative[`${targetScope.materialScopeId}:${studentId}:score`] = val;
+            appliedCells += 1;
+          }
+        } else if (col.category === "term") {
+          for (const [studentId, val] of Object.entries(col.values)) {
+            nextTerm[`${studentId}:${col.field}`] = val;
+            appliedCells += 1;
+          }
+        }
+      }
+
+      // Auto-Save langsung ke server
+      const formative = collectFormative(currentSheet, nextFormative);
+      const summative = collectSummative(currentSheet, nextSummative);
+      const termExams = collectTerm(currentSheet, nextTerm);
+      if (formative.length + summative.length + termExams.length > 0) {
+        const saved = await api<{ sheet: GradeSheetDto }>(`/api/v1/schools/${schoolId}/teaching-assignments/${currentSheet.assignmentId}/scores`, {
+          method: "PATCH",
+          body: JSON.stringify({ formative, summative, termExams }),
+        });
+        applySheet(saved.sheet);
+      } else {
+        applySheet(currentSheet);
+      }
+
+      const firstCat = chosen[0]?.category;
+      if (firstCat === "term") {
+        setTab("ujian");
+        if (chosen[0]?.field === "sts" || chosen[0]?.field === "sas") setTermField(chosen[0].field);
+      } else if (firstCat === "summative") {
+        setTab("sumatif");
+      } else if (firstCat === "formative") {
+        setTab("formatif");
+        const firstTp = currentSheet.formative.find((f) => f.code.trim().toUpperCase() === chosen[0]?.tpCode?.toUpperCase());
+        if (firstTp) setObjectiveId(firstTp.learningObjectiveId);
+      }
+
+      setSaveFailed(false);
+      setMessage(`Impor selesai: ${chosen.length} kolom (${appliedCells} nilai) otomatis tersimpan ke server.`);
+      setDialog(null);
+    } catch (caught) {
+      setError(caught instanceof ApiClientError ? caught.message : "Gagal menyimpan impor otomatis.");
+    } finally {
+      setImportingMulti(false);
+    }
+  }
+
+  function toggleAllImportCols() {
+    const f = detectedCols.filter((c) => c.matchedCount > 0).map((c) => c.key);
+    setSelectedColKeys((prev) => (prev.length === f.length ? [] : f));
+  }
   async function save() {
     if (sheet?.legacyLock) return;
     if (!schoolId || !sheet || invalid) {
@@ -342,42 +520,15 @@ export function GradePage() {
   }
 
   return (
-    <main className="-mx-4 -my-4 flex w-full flex-col bg-slate-100 md:absolute md:inset-0 md:m-0 md:overflow-hidden">
-      <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-1.5">
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-[23px] font-semibold leading-none text-slate-900">Input Nilai</h1>
-            <p className="mt-1 truncate text-[13px] text-slate-600">
-              {sheet?.legacyLock
-                ? "Status lama tidak dipetakan. Seluruh nilai tetap terkunci."
-                : activeComponent?.status === "SUBMITTED"
-                  ? `${activeComponent.label} sudah dikirim dan terkunci.`
-                  : activeComponent?.status === "REVISION_REQUESTED"
-                    ? `${activeComponent.label} menunggu keputusan wali kelas.`
-                    : "Setiap komponen dikirim sendiri kepada wali kelas."}
-            </p>
-          </div>
-          <label className="text-[13px] font-semibold text-slate-700">
-            Kelas dan mapel
-            <select value={assignmentId} onChange={(event) => requestAssignment(event.target.value)} className="mt-0.5 block h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm lg:min-w-80">
-              {teachings.map((item) => (
-                <option key={item.id} value={item.id}>{item.className} · {item.subjectName} · {item.periodName}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {error ? <p role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-1.5 text-sm text-red-700">{error}</p> : null}
-        {sheet ? (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {(["formatif", "sumatif", "ujian"] as const).map((item) => (
-              <button key={item} type="button" onClick={() => setTab(item)} className={`h-9 rounded-lg px-3 text-sm font-semibold ${tab === item ? "bg-teal-800 text-white" : "border border-slate-300 bg-white text-slate-800"}`}>
-                {item === "formatif" ? "Formatif" : item === "sumatif" ? "Sumatif" : "STS/SAS"}
-              </button>
-            ))}
-            <p className="ml-auto hidden text-[13px] text-slate-600 lg:block">{sheet.className} · {sheet.subjectName} · Guru {sheet.teacherName}</p>
-          </div>
-        ) : null}
-      </div>
+    <AppPageShell
+      badge="Akademik & Penilaian"
+      title="Input Nilai"
+      flushBody
+      subtitle={sheet?.legacyLock ? "Status lama tidak dipetakan. Seluruh nilai tetap terkunci." : activeComponent?.status === "SUBMITTED" ? `${activeComponent.label} sudah dikirim dan terkunci.` : activeComponent?.status === "REVISION_REQUESTED" ? `${activeComponent.label} menunggu keputusan wali kelas.` : "Setiap komponen dikirim sendiri kepada wali kelas."}
+      rightSlot={<label className="block text-xs font-semibold text-slate-700">Kelas dan mapel<select value={assignmentId} onChange={(e) => requestAssignment(e.target.value)} className="mt-1 block h-9 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 lg:min-w-80">{teachings.map((i) => <option key={i.id} value={i.id}>{i.className} · {i.subjectName} · {i.periodName}</option>)}</select></label>}
+      bannerSlot={error ? <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      tabsSlot={sheet ? <div className="flex flex-wrap items-center gap-2">{(["formatif", "sumatif", "ujian"] as const).map((i) => <button key={i} type="button" onClick={() => setTab(i)} className={`h-9 rounded-xl px-3.5 text-sm font-semibold transition ${tab === i ? "bg-[#0D1B4C] text-[#F5C400] shadow-xs" : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"}`}>{i === "formatif" ? "Formatif" : i === "sumatif" ? "Sumatif" : "STS/SAS"}</button>)}<p className="ml-auto hidden text-xs font-medium text-slate-600 lg:block">{sheet.className} · {sheet.subjectName} · Guru {sheet.teacherName}</p></div> : null}
+    >
       {loading || !sheet ? <p className="px-6 py-6 text-base text-slate-500">Memuat nilai...</p> : (
         <section className="flex flex-col md:min-h-0 md:flex-1">
           <p className="shrink-0 px-4 py-1.5 text-[13px] text-slate-600 lg:hidden">{sheet.className} · {sheet.subjectName} · Guru {sheet.teacherName}</p>
@@ -438,6 +589,7 @@ export function GradePage() {
                   Ajukan Revisi
                 </button>
               ) : null}
+              {!sheet.legacyLock ? <button type="button" onClick={openImportDialog} disabled={saving || acting} className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50">Import Nilai</button> : null}
               <button type="button" onClick={() => void save()} disabled={Boolean(sheet.legacyLock) || saving || dirtyCount === 0} title={sheet.legacyLock ? "Nilai terkunci oleh status lama" : undefined} className="h-9 rounded-lg bg-teal-800 px-4 text-sm font-semibold text-white disabled:opacity-60">
                 {saving ? "Menyimpan..." : "Simpan"}
               </button>
@@ -446,9 +598,9 @@ export function GradePage() {
         </section>
       )}
       {dialog && sheet ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="grade-action-title" className="max-h-[85vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-5 shadow-xl">
-            {dialog === "submit" && activeComponent ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 px-4 pb-24 pt-6 sm:pb-8">
+          <div role="dialog" aria-modal="true" aria-labelledby="grade-action-title" className="max-h-[78vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
+            {dialog === "import" ? <GradeImportModal importData={importData} importSheetName={importSheetName} detectedCols={detectedCols} selectedColKeys={selectedColKeys} importing={importingMulti} onFile={(f) => void handleImportFile(f)} onSelectSheet={handleSelectImportSheet} onToggleKey={(k, c) => setSelectedColKeys((prev) => (c ? [...prev, k] : prev.filter((x) => x !== k)))} onToggleAll={toggleAllImportCols} onClose={() => setDialog(null)} onApply={() => void applyMultiColumnImport()} /> : dialog === "submit" && activeComponent ? (
               <>
                 <h2 id="grade-action-title" className="text-lg font-semibold text-slate-900">Kirim {activeComponent.label}?</h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600">{sheet.className} · {sheet.subjectName} · {sheet.periodName}. Hanya komponen ini yang terkunci.</p>
@@ -478,7 +630,7 @@ export function GradePage() {
         </div>
       ) : null}
       {leaveIntent ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 px-4">
           <div role="dialog" aria-modal="true" aria-labelledby="leave-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h2 id="leave-title" className="text-xl font-semibold text-slate-900">Perubahan belum disimpan</h2>
             <p className="mt-2 text-base leading-7 text-slate-600">
@@ -491,7 +643,7 @@ export function GradePage() {
           </div>
         </div>
       ) : null}
-    </main>
+    </AppPageShell>
   );
 }
 

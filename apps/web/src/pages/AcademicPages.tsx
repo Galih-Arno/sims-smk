@@ -287,7 +287,7 @@ export function SchoolProfilePage() {
         ) : <p className="text-sm text-slate-500 sm:col-span-2">Anda hanya dapat melihat profil sekolah.</p>}
       </form>
       {statusTarget ? (
-        <div className="fixed inset-0 z-30 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
           <form className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-xl" onSubmit={(event) => { event.preventDefault(); void saveStatus(); }}>
             <h2 className="text-lg font-semibold">{statusTarget.status === "AKTIF" ? "Aktifkan kembali sekolah?" : statusTarget.status === "DITANGGUHKAN" ? "Tangguhkan sekolah?" : "Nonaktifkan sekolah?"}</h2>
             <p className="text-sm leading-6 text-slate-600">{statusTarget.name} tidak akan dihapus. Nilai, absensi, akun, dan penugasan tetap ada. Sekolah yang tidak aktif tidak dapat dioperasikan sampai diaktifkan kembali.</p>
@@ -305,7 +305,7 @@ export function SchoolProfilePage() {
         </div>
       ) : null}
       {creating ? (
-        <div className="fixed inset-0 z-20 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
           <form onSubmit={(event) => void createSchool(event)} className="w-full max-w-md rounded-2xl bg-white p-5">
             <h2 className="text-lg font-semibold">Tambah sekolah</h2>
             <label className="mt-4 block text-sm font-medium">Nama
@@ -677,7 +677,7 @@ export function TeachersPage() {
         )}
       />
       {draft ? (
-        <div className="fixed inset-0 z-30 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
           <form className="max-h-[90vh] w-full max-w-lg space-y-3 overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onSubmit={(event) => { event.preventDefault(); void saveTeacher(false); }}>
             <div>
               <h2 className="text-lg font-semibold">{draft.id ? "Ubah guru" : "Tambah guru"}</h2>
@@ -727,7 +727,7 @@ export function TeachersPage() {
         </div>
       ) : null}
       {unlinkTarget ? (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
             <h2 className="text-lg font-semibold">Lepas tautan akun?</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -743,7 +743,7 @@ export function TeachersPage() {
         </div>
       ) : null}
       {credential?.temporaryPassword ? (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
             <h2 className="text-lg font-semibold">Kata sandi awal</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">Kata sandi ini hanya ditampilkan sekali. Sampaikan kepada guru. Guru wajib menggantinya saat masuk pertama.</p>

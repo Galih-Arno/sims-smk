@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x", "windows"]
 }
 
 datasource db {
@@ -20,6 +21,13 @@ enum RoleCode {
   GURU_MAPEL
   WALI_KELAS
   TU
+  KOMITE_SEKOLAH
+  WAKA_KESISWAAN
+  WAKA_SARPRAS
+  WAKA_HUMAS
+  BENDAHARA
+  OPERATOR_SEKOLAH
+  KAPROG
 }
 
 enum SemesterKind {
@@ -160,6 +168,14 @@ model School {
   accessStatus     SchoolAccessStatus @default(AKTIF)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  payrollPeriods     PayrollPeriod[]
+  payrollSlips       PayrollSlip[]
+  workshopTools      WorkshopTool[]
+  toolLoans          ToolLoan[]
+  bkkJobPosts        BkkJobPost[]
+  alumniTracers      AlumniTracer[]
+  ppdbApplicants     PpdbApplicant[]
+  anonymousReports   AnonymousReport[]
 
   assignments             UserRole[]
   academicYears           AcademicYear[]
@@ -205,6 +221,17 @@ model School {
   reportCardEvents            ReportCardEvent[]
   studentReportActivities     StudentReportActivity[]
   auditLogs                 AuditLog[]
+  attendanceSetting         SchoolAttendanceSetting?
+  staffAttendances          StaffAttendance[]
+  teachingJournals          TeachingJournal[]
+  staffLeaveRequests        StaffLeaveRequest[]
+  studentCharacterRecords   StudentCharacterRecord[]
+  counselingReports         CounselingReport[]
+  parentStudentLinks        ParentStudentLink[]
+  studentBills              StudentBill[]
+  studentPayments           StudentPayment[]
+  internshipPlacements      InternshipPlacement[]
+  internshipLogs            InternshipLog[]
 
   @@index([isActive])
 }
@@ -225,7 +252,17 @@ model User {
   assignments   UserRole[]
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
-  teacher       Teacher?
+  teacher          Teacher?
+  staffAttendances StaffAttendance[]
+  teachingJournals TeachingJournal[]
+  staffLeaveRequests StaffLeaveRequest[]
+  reviewedLeaveRequests StaffLeaveRequest[] @relation("LeaveReviewedBy")
+  payrollSlips          PayrollSlip[]
+  approvedPayrollSlips  PayrollSlip[] @relation("PayrollApprovedBy")
+  counselingReports CounselingReport[]
+  parentStudentLinks ParentStudentLink[]
+  recordedPayments StudentPayment[] @relation("PaymentRecordedBy")
+  verifiedInternshipLogs InternshipLog[] @relation("InternshipLogVerifiedBy")
 
   @@index([isActive])
 }
@@ -451,6 +488,13 @@ model Student {
   reportCardWorkflows          ReportCardWorkflow[]
   reportCardSnapshots          ReportCardSnapshot[]
   studentReportActivities      StudentReportActivity[]
+  characterRecords             StudentCharacterRecord[]
+  counselingReports            CounselingReport[]
+  parentLinks                  ParentStudentLink[]
+  bills                        StudentBill[]
+  payments                     StudentPayment[]
+  internshipPlacements         InternshipPlacement[]
+  internshipLogs               InternshipLog[]
 
   @@unique([schoolId, nis])
   @@index([schoolId, name])
@@ -499,6 +543,7 @@ model TeachingAssignment {
   competencyDescription CompetencyDescription?
   classScheduleSlots ClassScheduleSlot[]
   attendanceMeetings AttendanceMeeting[]
+  teachingJournals   TeachingJournal[]
 
   @@unique([classId, subjectId, academicPeriodId])
   @@index([schoolId, teacherId])
@@ -698,6 +743,7 @@ model LearningObjective {
   teachingAssignment   TeachingAssignment   @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
   curriculum           Curriculum?          @relation(fields: [curriculumId], references: [id], onDelete: SetNull)
   formativeAssessment  FormativeAssessment?
+  teachingJournals     TeachingJournal[]
 
   @@unique([teachingAssignmentId, code])
   @@index([schoolId, sequence])
@@ -878,6 +924,7 @@ model AttendanceMeeting {
   scheduleSlot       ClassScheduleSlot?     @relation(fields: [scheduleSlotId], references: [id], onDelete: SetNull)
   records            AttendanceRecord[]
   corrections        AttendanceCorrection[]
+  teachingJournal    TeachingJournal?
 
   @@unique([teachingAssignmentId, meetingDate, sessionNo])
   @@index([schoolId, meetingDate])
@@ -1226,4 +1273,519 @@ model RefreshToken {
 
   @@index([userId, familyId])
   @@index([expiresAt])
+}
+
+
+enum StaffAttendanceStatus {
+  TEPAT_WAKTU
+  TERLAMBAT
+  DINAS_LUAR
+  IZIN
+}
+
+model SchoolAttendanceSetting {
+  id               String   @id @default(cuid())
+  schoolId         String   @unique
+  latitude         Float    @default(-7.2248)
+  longitude        Float    @default(105.7745)
+  radiusMeters     Int      @default(150)
+  workStartTime    String   @default("07:00") @db.VarChar(5)
+  lateToleranceMin Int      @default(15)
+  workEndTime      String   @default("15:30") @db.VarChar(5)
+  requireLiveness  Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+}
+
+model StaffAttendance {
+  id                String                @id @default(cuid())
+  schoolId          String
+  userId            String
+  workDate          DateTime              @db.Date
+  checkInAt         DateTime?
+  checkInLat        Float?
+  checkInLng        Float?
+  checkInDistanceM  Int?
+  checkInPhotoUrl   String?               @db.VarChar(500)
+  checkOutAt        DateTime?
+  checkOutLat       Float?
+  checkOutLng       Float?
+  checkOutDistanceM Int?
+  checkOutPhotoUrl  String?               @db.VarChar(500)
+  status            StaffAttendanceStatus @default(TEPAT_WAKTU)
+  note              String?               @db.VarChar(300)
+  idempotencyKey    String?               @unique @db.VarChar(100)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, userId, workDate])
+  @@index([schoolId, workDate])
+  @@index([userId, workDate])
+}
+
+model TeachingJournal {
+  id                   String   @id @default(cuid())
+  schoolId             String
+  teachingAssignmentId String
+  attendanceMeetingId  String?  @unique
+  learningObjectiveId  String?
+  teacherUserId        String
+  journalDate          DateTime @db.Date
+  sessionNo            Int      @default(1)
+  topic                String   @db.VarChar(300)
+  activities           String   @db.VarChar(2000)
+  studentNotes         String?  @db.VarChar(1000)
+  photoUrl             String?  @db.VarChar(500)
+  idempotencyKey       String?  @unique @db.VarChar(100)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  school             School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
+  attendanceMeeting  AttendanceMeeting? @relation(fields: [attendanceMeetingId], references: [id], onDelete: SetNull)
+  learningObjective  LearningObjective? @relation(fields: [learningObjectiveId], references: [id], onDelete: SetNull)
+  teacherUser        User               @relation(fields: [teacherUserId], references: [id], onDelete: Restrict)
+
+  @@unique([teachingAssignmentId, journalDate, sessionNo])
+  @@index([schoolId, journalDate])
+  @@index([teacherUserId, journalDate])
+}
+
+
+enum StaffLeaveType {
+  CUTI
+  IZIN
+  SAKIT
+  DINAS_LUAR_SPD
+}
+
+enum ApprovalStatus {
+  MENUNGGU
+  DISETUJUI
+  DITOLAK
+}
+
+enum CharacterRecordType {
+  PRESTASI
+  PELANGGARAN
+}
+
+enum CounselingReportStatus {
+  BARU
+  DIPROSES
+  SELESAI
+}
+
+model StaffLeaveRequest {
+  id           String         @id @default(cuid())
+  schoolId     String
+  userId       String
+  leaveType    StaffLeaveType
+  startDate    DateTime       @db.Date
+  endDate      DateTime       @db.Date
+  reason       String         @db.VarChar(1000)
+  attachmentUrl String?       @db.VarChar(500)
+  status       ApprovalStatus @default(MENUNGGU)
+  reviewedById String?
+  reviewNote   String?        @db.VarChar(500)
+  reviewedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  school     School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?  @relation("LeaveReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, status, startDate])
+  @@index([userId, startDate])
+}
+
+model StudentCharacterRecord {
+  id         String              @id @default(cuid())
+  schoolId   String
+  studentId  String
+  recordType CharacterRecordType
+  category   String              @db.VarChar(120)
+  points     Int
+  note       String              @db.VarChar(1000)
+  recordedBy String?             @db.VarChar(120)
+  occurredAt DateTime            @default(now())
+  createdAt  DateTime            @default(now())
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, studentId, occurredAt])
+}
+
+model CounselingReport {
+  id            String               @id @default(cuid())
+  schoolId      String
+  studentId     String?
+  reporterUserId String?
+  isAnonymous   Boolean              @default(false)
+  subject       String               @db.VarChar(200)
+  description   String               @db.VarChar(2000)
+  status        CounselingReportStatus @default(BARU)
+  counselorNote String?              @db.VarChar(1000)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  school       School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student      Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  reporterUser User?    @relation(fields: [reporterUserId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, status, createdAt])
+}
+
+
+enum BillStatus {
+  BELUM_LUNAS
+  SEBAGIAN
+  LUNAS
+}
+
+enum PaymentChannel {
+  TUNAI
+  TRANSFER_MANUAL
+  MIDTRANS
+  XENDIT
+}
+
+model ParentStudentLink {
+  id           String   @id @default(cuid())
+  schoolId     String
+  parentUserId String
+  studentId    String
+  relation     String   @default("WALI") @db.VarChar(40)
+  createdAt    DateTime @default(now())
+
+  school     School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  parentUser User    @relation(fields: [parentUserId], references: [id], onDelete: Cascade)
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentUserId, studentId])
+  @@index([schoolId, studentId])
+}
+
+model StudentBill {
+  id          String     @id @default(cuid())
+  schoolId    String
+  studentId   String
+  title       String     @db.VarChar(180)
+  fundBucket  String     @default("KOMITE") @db.VarChar(40)
+  amount      Int
+  paidAmount  Int        @default(0)
+  dueDate     DateTime?  @db.Date
+  status      BillStatus @default(BELUM_LUNAS)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  school   School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  payments StudentPayment[]
+
+  @@index([schoolId, studentId, status])
+}
+
+model StudentPayment {
+  id             String         @id @default(cuid())
+  schoolId       String
+  billId         String
+  studentId      String
+  amount         Int
+  channel        PaymentChannel @default(TUNAI)
+  referenceCode  String?        @db.VarChar(120)
+  idempotencyKey String?        @unique @db.VarChar(100)
+  recordedById   String?
+  paidAt         DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+
+  school     School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  bill       StudentBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  student    Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  recordedBy User?       @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, billId, paidAt])
+}
+
+
+enum InternshipStatus {
+  AKTIF
+  SELESAI
+  DIBATALKAN
+}
+
+enum InternshipLogStatus {
+  MENUNGGU
+  DISETUJUI
+  REVISI
+}
+
+model InternshipPlacement {
+  id             String           @id @default(cuid())
+  schoolId       String
+  studentId      String
+  companyName    String           @db.VarChar(200)
+  companyAddress String?          @db.VarChar(400)
+  supervisorName String?          @db.VarChar(120)
+  startDate      DateTime         @db.Date
+  endDate        DateTime         @db.Date
+  status         InternshipStatus @default(AKTIF)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  school  School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  logs    InternshipLog[]
+
+  @@index([schoolId, studentId, status])
+}
+
+model InternshipLog {
+  id           String              @id @default(cuid())
+  schoolId     String
+  placementId  String
+  studentId    String
+  logDate      DateTime            @db.Date
+  activity     String              @db.VarChar(2000)
+  locationNote String?             @db.VarChar(300)
+  status       InternshipLogStatus @default(MENUNGGU)
+  verifiedById String?
+  verifiedAt   DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  school     School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  placement  InternshipPlacement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  student    Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  verifiedBy User?               @relation("InternshipLogVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@unique([placementId, logDate])
+  @@index([schoolId, logDate, status])
+}
+
+
+enum PayrollPeriodStatus {
+  DRAFT
+  TERBIT
+  SELESAI
+}
+
+enum PayrollSlipStatus {
+  DRAFT
+  DITERBITKAN
+  DIBAYAR
+}
+
+model PayrollPeriod {
+  id               String              @id @default(cuid())
+  schoolId         String
+  month            Int
+  year             Int
+  title            String              @db.VarChar(120)
+  ratePerJtm       Int                 @default(35000)
+  ratePerHadir     Int                 @default(25000)
+  status           PayrollPeriodStatus @default(DRAFT)
+  notes            String?             @db.VarChar(500)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  school School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  slips  PayrollSlip[]
+
+  @@unique([schoolId, year, month])
+  @@index([schoolId, status])
+}
+
+model PayrollSlip {
+  id               String            @id @default(cuid())
+  schoolId         String
+  periodId         String
+  userId           String
+  employeeName     String            @db.VarChar(160)
+  roleLabel        String            @db.VarChar(100)
+  totalHadirDays   Int               @default(0)
+  totalJtmHours    Int               @default(0)
+  baseHonor        Int               @default(0)
+  attendanceBonus  Int               @default(0)
+  positionBonus    Int               @default(0)
+  deductionAmount  Int               @default(0)
+  deductionNote    String?           @db.VarChar(300)
+  netPay           Int               @default(0)
+  status           PayrollSlipStatus @default(DRAFT)
+  approvedById     String?
+  paidAt           DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  school     School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  period     PayrollPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy User?         @relation("PayrollApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([periodId, userId])
+  @@index([schoolId, userId, status])
+}
+
+
+enum ToolCondition {
+  BAIK
+  PERLU_PERBAIKAN
+  RUSAK
+}
+
+enum ToolLoanStatus {
+  DIPINJAM
+  DIKEMBALIKAN
+}
+
+enum TracerStatus {
+  BEKERJA
+  WIRAUSAHA
+  KULIAH
+  BELUM_BEKERJA
+}
+
+model WorkshopTool {
+  id            String        @id @default(cuid())
+  schoolId      String
+  assetCode     String        @db.VarChar(60)
+  name          String        @db.VarChar(160)
+  labName       String        @db.VarChar(120)
+  totalQty      Int           @default(1)
+  availableQty  Int           @default(1)
+  condition     ToolCondition @default(BAIK)
+  notes         String?       @db.VarChar(300)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  school School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  loans  ToolLoan[]
+
+  @@unique([schoolId, assetCode])
+  @@index([schoolId, labName])
+}
+
+model ToolLoan {
+  id            String         @id @default(cuid())
+  schoolId      String
+  toolId        String
+  borrowerName  String         @db.VarChar(160)
+  borrowerRole  String         @db.VarChar(80)
+  qty           Int            @default(1)
+  purpose       String?        @db.VarChar(300)
+  borrowedAt    DateTime       @default(now())
+  returnedAt    DateTime?
+  status        ToolLoanStatus @default(DIPINJAM)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  school School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  tool   WorkshopTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, status])
+}
+
+model BkkJobPost {
+  id            String   @id @default(cuid())
+  schoolId      String
+  companyName   String   @db.VarChar(160)
+  positionTitle String   @db.VarChar(160)
+  location      String   @db.VarChar(120)
+  majorTarget   String?  @db.VarChar(120)
+  deadline      DateTime? @db.Date
+  description   String   @db.VarChar(2000)
+  contactInfo   String?  @db.VarChar(200)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, isActive])
+}
+
+model AlumniTracer {
+  id              String       @id @default(cuid())
+  schoolId        String
+  alumniName      String       @db.VarChar(160)
+  graduationYear  Int
+  majorName       String       @db.VarChar(120)
+  status          TracerStatus @default(BEKERJA)
+  institutionName String?      @db.VarChar(160)
+  positionOrStudy String?      @db.VarChar(160)
+  phone           String?      @db.VarChar(32)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, graduationYear, status])
+}
+
+
+enum PpdbStatus {
+  MENDAFTAR
+  TERVERIFIKASI
+  DITERIMA
+  CADANGAN
+  DITOLAK
+}
+
+enum WhistleblowerCategory {
+  PERUNDUNGAN_BULLYING
+  KEKERASAN_FISIK_VERBAL
+  FASILITAS_KEAMANAN
+  LAINNYA
+}
+
+enum WhistleblowerStatus {
+  BARU
+  DITINDAKLANJUTI
+  SELESAI
+}
+
+model PpdbApplicant {
+  id               String     @id @default(cuid())
+  schoolId         String
+  registrationNo   String     @db.VarChar(40)
+  fullName         String     @db.VarChar(160)
+  nisn             String?    @db.VarChar(20)
+  originSchool     String     @db.VarChar(160)
+  chosenMajor      String     @db.VarChar(120)
+  parentPhone      String     @db.VarChar(32)
+  averageScore     Float?
+  status           PpdbStatus @default(MENDAFTAR)
+  notes            String?    @db.VarChar(300)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, registrationNo])
+  @@index([schoolId, status, chosenMajor])
+}
+
+model AnonymousReport {
+  id             String                @id @default(cuid())
+  schoolId       String
+  ticketCode     String                @db.VarChar(32)
+  category       WhistleblowerCategory @default(PERUNDUNGAN_BULLYING)
+  incidentPlace  String?               @db.VarChar(160)
+  description    String                @db.VarChar(2000)
+  status         WhistleblowerStatus   @default(BARU)
+  counselorReply String?               @db.VarChar(1000)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, ticketCode])
+  @@index([schoolId, status])
 }

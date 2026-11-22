@@ -307,7 +307,7 @@ export function GradePolicyPage() {
         </div>
       </div>
       {draft ? (
-        <div className="fixed inset-0 z-20 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
           <form
             className="max-h-[90vh] w-full max-w-2xl space-y-3 overflow-y-auto rounded-2xl bg-white p-4 shadow-xl"
             onSubmit={(event) => {
@@ -406,7 +406,7 @@ export function GradePolicyPage() {
         </div>
       ) : null}
       {activateId ? (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-4">
             <h2 className="text-base font-semibold">Aktifkan pengaturan</h2>
             <p className="text-sm text-slate-600">Pengaturan aktif menjadi acuan kebijakan sekolah untuk lingkup ini. Nilai siswa tidak dihitung ulang.</p>

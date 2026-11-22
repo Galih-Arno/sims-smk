@@ -1,20 +1,13 @@
 import { Link } from "react-router-dom";
 import { RoleDashboard } from "../components/dashboard/RoleDashboard.tsx";
+import { SuperAppHome } from "./SuperAppHome.tsx";
 import { useSchoolScope } from "../lib/school.tsx";
 import { usePortal } from "../lib/portal.tsx";
 
 const EMPTY_ASSIGNMENT = "Anda belum memiliki penugasan mengajar. Silakan hubungi Wakasek Kurikulum.";
 
 export function TeacherHomePage() {
-  const { schoolId } = useSchoolScope();
-  return (
-    <RoleDashboard
-      view="guru"
-      schoolId={schoolId}
-      title="Dashboard guru"
-      subtitle="Kelas, mata pelajaran, dan status nilai sesuai penugasan Anda pada semester aktif."
-    />
-  );
+  return <SuperAppHome />;
 }
 
 export function MyClassesPage() {
@@ -60,13 +53,5 @@ export function MyClassesPage() {
 }
 
 export function WaliHomePage() {
-  const { schoolId } = useSchoolScope();
-  return (
-    <RoleDashboard
-      view="wali"
-      schoolId={schoolId}
-      title="Dashboard wali kelas"
-      subtitle="Jumlah siswa binaan, kelengkapan nilai, absensi, dan status pemeriksaan rapor."
-    />
-  );
+  return <SuperAppHome />;
 }

@@ -1,6 +1,6 @@
 import { Link, Navigate, Outlet } from "react-router-dom";
 import { isGuru, isStaff, isWali } from "../lib/access.ts";
-import { DashboardPage } from "../pages/DashboardPage.tsx";
+import { SuperAppHome } from "../pages/SuperAppHome.tsx";
 import { useAuth } from "../lib/auth.tsx";
 import { usePortal } from "../lib/portal.tsx";
 import { useSchoolScope } from "../lib/school.tsx";
@@ -65,7 +65,7 @@ export function HomeGate() {
   if (!isStaff(user, schoolId)) {
     return <Navigate to={portal === "wali" ? "/wali/beranda" : "/guru/beranda"} replace />;
   }
-  return <DashboardPage />;
+  return <SuperAppHome />;
 }
 
 export function GuestRoute() {

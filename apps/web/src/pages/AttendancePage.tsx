@@ -291,7 +291,7 @@ export function AttendancePage() {
         </table>
       </div>
       {creating ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
           <form
             role="dialog"
             aria-modal="true"
