@@ -57,7 +57,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     const canManage =
       isOwner ||
       (user?.assignments.some(
-        (assignment) => assignment.schoolId === schoolId && assignment.roleCode === "ADMIN_SEKOLAH",
+        (assignment) => assignment.schoolId === schoolId && (assignment.roleCode === "ADMIN_SEKOLAH" || assignment.roleCode === "OPERATOR_SEKOLAH"),
       ) ??
         false);
     const canCoordinate =

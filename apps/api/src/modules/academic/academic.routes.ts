@@ -390,16 +390,16 @@ export async function academicRoutes(app: FastifyInstance): Promise<void> {
     return listSubjects(app.prisma, current.params.schoolId, current.scope, current.query);
   });
   app.post("/schools/:schoolId/subjects", { preHandler: requireAuth }, async (request, reply) => {
-    const current = await manage(app, request);
+    const current = await coordinate(app, request);
     return reply.status(201).send({ item: await createSubject(app.prisma, current.auth, current.params.schoolId, parseInput(subjectSchema, request.body ?? {}), current.meta) });
   });
   app.patch("/schools/:schoolId/subjects/:id", { preHandler: requireAuth }, async (request) => {
-    const current = await manage(app, request);
+    const current = await coordinate(app, request);
     const params = parseInput(idParamsSchema, request.params);
     return { item: await updateSubject(app.prisma, current.auth, params.schoolId, params.id, parseInput(subjectSchema, request.body ?? {}), current.meta) };
   });
   app.delete("/schools/:schoolId/subjects/:id", { preHandler: requireAuth }, async (request, reply) => {
-    const current = await manage(app, request);
+    const current = await coordinate(app, request);
     const params = parseInput(idParamsSchema, request.params);
     await deleteSubject(app.prisma, current.auth, params.schoolId, params.id, current.meta);
     return reply.status(204).send();
@@ -410,11 +410,11 @@ export async function academicRoutes(app: FastifyInstance): Promise<void> {
     return listTeachings(app.prisma, current.params.schoolId, current.scope, current.query);
   });
   app.post("/schools/:schoolId/teaching-assignments", { preHandler: requireAuth }, async (request, reply) => {
-    const current = await manage(app, request);
+    const current = await coordinate(app, request);
     return reply.status(201).send({ item: await createTeaching(app.prisma, current.auth, current.params.schoolId, parseInput(teachingSchema, request.body ?? {}), current.meta) });
   });
   app.delete("/schools/:schoolId/teaching-assignments/:id", { preHandler: requireAuth }, async (request, reply) => {
-    const current = await manage(app, request);
+    const current = await coordinate(app, request);
     const params = parseInput(idParamsSchema, request.params);
     await deleteTeaching(app.prisma, current.auth, params.schoolId, params.id, current.meta);
     return reply.status(204).send();
@@ -425,11 +425,11 @@ export async function academicRoutes(app: FastifyInstance): Promise<void> {
     return listHomerooms(app.prisma, current.params.schoolId, current.scope, current.query);
   });
   app.post("/schools/:schoolId/homeroom-assignments", { preHandler: requireAuth }, async (request, reply) => {
-    const current = await manage(app, request);
+    const current = await coordinate(app, request);
     return reply.status(201).send({ item: await createHomeroom(app.prisma, current.auth, current.params.schoolId, parseInput(homeroomSchema, request.body ?? {}), current.meta) });
   });
   app.delete("/schools/:schoolId/homeroom-assignments/:id", { preHandler: requireAuth }, async (request, reply) => {
-    const current = await manage(app, request);
+    const current = await coordinate(app, request);
     const params = parseInput(idParamsSchema, request.params);
     await deleteHomeroom(app.prisma, current.auth, params.schoolId, params.id, current.meta);
     return reply.status(204).send();

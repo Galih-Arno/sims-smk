@@ -416,9 +416,128 @@ export function LearningPlansPage() {
         </div>
       ) : null}
       {slot ? <p className="text-sm text-slate-600">Guru pengampu: {slot.teacherName}. {slot.writable ? "Anda dapat mengubah TP dan LM ini." : "Anda dapat melihat, tanpa mengubah."}</p> : null}
+      {slot?.writable ? (
+        <ParallelPlanCopy
+          schoolId={schoolId}
+          sourceSlot={slot}
+          parallelSlots={slots.filter(
+            (item) =>
+              item.academicPeriodId === periodId &&
+              item.subjectId === subjectId &&
+              item.classId !== classId &&
+              item.writable
+          )}
+        />
+      ) : null}
       {periodId && classId && !slot && subjectId ? <p className="text-sm text-slate-500">Kombinasi ini belum memiliki penugasan guru.</p> : null}
       <PlanList schoolId={schoolId} title="Tujuan pembelajaran" emptyLabel="Belum ada tujuan pembelajaran." path="learning-objectives" classId={classId} subjectId={subjectId} academicPeriodId={periodId} canWrite={Boolean(slot?.writable)} />
       <PlanList schoolId={schoolId} title="Lingkup materi" emptyLabel="Belum ada lingkup materi." path="material-scopes" classId={classId} subjectId={subjectId} academicPeriodId={periodId} canWrite={Boolean(slot?.writable)} />
     </section>
+  );
+}
+
+function ParallelPlanCopy({
+  schoolId,
+  sourceSlot,
+  parallelSlots,
+}: {
+  schoolId: string;
+  sourceSlot: PlanSlotDto;
+  parallelSlots: PlanSlotDto[];
+}) {
+  const [targetClassIds, setTargetClassIds] = useState<string[]>([]);
+  const [copying, setCopying] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    setTargetClassIds([]);
+    setMessage("");
+  }, [sourceSlot.classId, sourceSlot.subjectId, sourceSlot.academicPeriodId]);
+
+  if (parallelSlots.length === 0) return null;
+
+  async function handleCopy() {
+    if (targetClassIds.length === 0) return;
+    setCopying(true);
+    setMessage("");
+    try {
+      const baseQuery = `classId=${encodeURIComponent(sourceSlot.classId)}&subjectId=${encodeURIComponent(sourceSlot.subjectId)}&academicPeriodId=${encodeURIComponent(sourceSlot.academicPeriodId)}&page=1&pageSize=100`;
+      const [tpRes, lmRes] = await Promise.all([
+        api<PageResult<PlanItemDto>>(`/api/v1/schools/${schoolId}/learning-objectives?${baseQuery}`),
+        api<PageResult<PlanItemDto>>(`/api/v1/schools/${schoolId}/material-scopes?${baseQuery}`),
+      ]);
+      let copiedCount = 0;
+      for (const targetClassId of targetClassIds) {
+        for (const tp of tpRes.items) {
+          try {
+            await api(`/api/v1/schools/${schoolId}/learning-objectives`, {
+              method: "POST",
+              body: JSON.stringify({
+                classId: targetClassId,
+                subjectId: sourceSlot.subjectId,
+                academicPeriodId: sourceSlot.academicPeriodId,
+                code: tp.code,
+                description: tp.description,
+              }),
+            });
+            copiedCount += 1;
+          } catch {}
+        }
+        for (const lm of lmRes.items) {
+          try {
+            await api(`/api/v1/schools/${schoolId}/material-scopes`, {
+              method: "POST",
+              body: JSON.stringify({
+                classId: targetClassId,
+                subjectId: sourceSlot.subjectId,
+                academicPeriodId: sourceSlot.academicPeriodId,
+                code: lm.code,
+                description: lm.description,
+              }),
+            });
+            copiedCount += 1;
+          } catch {}
+        }
+      }
+      setMessage(`Berhasil menyalin ${copiedCount} item TP & Lingkup Materi ke ${targetClassIds.length} kelas paralel.`);
+      setTargetClassIds([]);
+    } finally {
+      setCopying(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-950">Salin TP &amp; Lingkup Materi ke Kelas Paralel</h3>
+      <p className="text-xs text-amber-900">Salin seluruh TP &amp; LM dari <strong>{sourceSlot.className}</strong> ke kelas lain pada mapel yang sama tanpa mengetik ulang.</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {parallelSlots.map((target) => {
+          const checked = targetClassIds.includes(target.classId);
+          return (
+            <label key={target.classId} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium ${checked ? "border-amber-700 bg-amber-100 text-amber-950" : "border-amber-200 bg-white text-slate-700"}`}>
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() =>
+                  setTargetClassIds((prev) =>
+                    prev.includes(target.classId) ? prev.filter((id) => id !== target.classId) : [...prev, target.classId]
+                  )
+                }
+              />
+              <span>{target.className}</span>
+            </label>
+          );
+        })}
+        <button
+          type="button"
+          disabled={copying || targetClassIds.length === 0}
+          onClick={() => void handleCopy()}
+          className="ml-auto rounded-xl bg-amber-800 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+        >
+          {copying ? "Menyalin..." : `Salin ke ${targetClassIds.length} Kelas Terpilih`}
+        </button>
+      </div>
+      {message ? <p className="mt-2 text-xs font-medium text-emerald-800">{message}</p> : null}
+    </div>
   );
 }

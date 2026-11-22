@@ -1,235 +1,214 @@
-# SAKTI-Ku — SIMS SMK Super-App (Multi-Role & Cross-SOP Orchestration)
+# SAKTI-Ku — Super-App Sistem Informasi Manajemen Sekolah (SIMS SMK)
 
-Sistem Informasi Manajemen Sekolah (SIMS) terintegrasi untuk SMK yang dirancang dengan arsitektur **Multi-Role RBAC (14 Peran Organisasi)**, **Lintas Jurusan & Tahun Ajaran**, serta **Orkestrasi 8 SOP Terpadu** dari siklus PPDB hingga Alumni lintas angkatan.
-
----
-
-## 1. Rekap Progres Arsitektur & Transformasi UI/UX (Completed Milestones)
-
-### A. Fondasi Akses & Multi-Role RBAC (`packages/shared`, `apps/web/src/lib/access.ts`)
-- **Dukungan Penuh 14 Peran Organisasi SMK:** `SYSTEM_OWNER`, `KEPALA_SEKOLAH`, `KOMITE_SEKOLAH`, `WAKAKUR`, `WAKA_KESISWAAN`, `WAKA_SARPRAS`, `WAKA_HUMAS`, `BENDAHARA`, `KAPROG` (Kepala Program Keahlian seperti TJKT, TSM, AKL, BDP, PH), `OPERATOR_SEKOLAH`, `ADMIN_SEKOLAH`, `TU`, `WALI_KELAS`, dan `GURU_MAPEL`.
-- **Jabatan Rangkap (*Multi-Title Badges*):** Melalui fungsi `allJobTitles()`, satu akun pegawai otomatis menampilkan seluruh jabatan aktifnya secara bersamaan (misalnya `Kepala Program Keahlian` + `Wali Kelas` + `Guru Mata Pelajaran`).
-- **Pemisahan Wewenang Penugasan:** Admin Sekolah/Operator mengelola hak akses struktural di `/pengguna`, sementara Waka Kurikulum mengelola distribusi jam mengajar (`/penugasan`) dan penetapan wali kelas per rombel (`/wali-kelas`).
-
-### B. Transformasi UI/UX Super-App Home & Kontrak Layout (`SuperAppHome.tsx`, `AppPageShell.tsx`)
-- **Dynamic Multi-Role Hero Card:**
-  - Menampilkan daftar *pill* seluruh jabatan aktif pengguna (bukan sekadar satu peran statis).
-  - Menampilkan metrik tengah yang adaptif terhadap konteks tugas (`Kelas Diampu` untuk pengajar, `Kelas Wali` untuk wali kelas, atau `Jabatan Aktif` untuk pimpinan/struktural).
-  - Menampilkan status presensi GPS harian serta ringkasan slip gaji dengan fitur privasi nominal (*toggle* sembunyikan/tampilkan angka).
-- **Task-Driven Service Grid & Drawer (*Layanan Utama* & *Semua Layanan*):**
-  - Menyusun ulang urutan 8 ikon utama bergradasi (*squircle icons*) secara otomatis berdasarkan prioritas tugas jabatan masing-masing (misalnya Kaprog langsung melihat *Bengkel & Lab*, *Prakerin / PKL*, dan *BKK & Alumni*; Bendahara melihat *Kelola Payroll* & *Keuangan SPP*; Kepala Sekolah melihat *Pengesahan Rapor*).
-  - Tombol aksi cepat pada header *Layanan Utama* menyesuaikan rute paling krusial tiap peran (`Jadwal Kelas →`, `Kurikulum →`, `Pengesahan →`, atau `Data Siswa →`).
-- **Standar Kontrak Layout `AppPageShell` & Mobile-First:**
-  - Konsistensi *safe-area padding* bawah agar konten tidak pernah tertutup *floating bottom navigation dock* pada layar ponsel maupun tablet.
-  - Kontrak `z-index` bertingkat yang bersih antara *sticky header*, *floating dock*, dan *modal/drawer* pencarian layanan.
-
-### C. Kerangka Master 8 SOP Terpadu (`/sop-kerja` — `sopWorkflow.ts`, `SopFrameworkPage.tsx`)
-- **Peta Estafet Lintas Peran & Lintas Jurusan:** Merangkum seluruh proses bisnis sekolah dari **SOP-01** (Siklus Tahun Ajaran, PPDB & Kenaikan Kelas X→XI→XII→Alumni) hingga **SOP-08** (Keuangan Siswa & Transparansi Komite).
-- **Filter Interaktif:** Tab **"SOP Tugas Saya"** otomatis menyorot langkah kerja sesuai peran aktif pengguna lengkap dengan informasi penerima estafet berikutnya (`→ Estafet ke: ...`) dan tombol pintasan langsung ke form terkait, sementara **"Semua SOP (01–08)"** menampilkan alur lengkap sekolah untuk koordinasi dan audit.
-
-### D. Implementasi Form Riil Lapangan SOP-02 (`TeachingJournalPage.tsx` — `/guru/jurnal`)
-- **E-Jurnal & Presensi Siswa 1-Ketuk (*Default Hadir*):**
-  - Menyatukan pengisian jurnal materi mengajar dan absensi siswa dalam satu layar tanpa perlu berpindah halaman.
-  - Begitu kelas & mapel dipilih, daftar siswa aktif rombel otomatis dimuat dengan status awal **`H` (Hadir)** sehingga guru cukup mengetuk tombol ringkas **`S` (Sakit)**, **`I` (Izin)**, atau **`A` (Alpa)** bagi siswa yang berhalangan, lengkap dengan penghitung langsung (`H · S · I · A`) dan pencarian cepat.
-- **Estafet Otomatis ke Wali Kelas & Ketahanan Offline:**
-  - Saat tombol **Simpan Jurnal & Presensi** ditekan, sistem otomatis membuat dan memfinalisasi pertemuan presensi sehingga hasil kehadiran langsung tampil di pantauan **Wali Kelas (`/wali/absensi-harian`)**.
-  - Mendukung antrean *offline* (`offlineQueue`) saat sinyal Wi-Fi bengkel/kelas terputus dan otomatis melakukan sinkronisasi saat koneksi kembali pulih.
+Platform digital terpadu berbasis web (*Super-App*) yang dirancang khusus untuk operasional nyata **Sekolah Menengah Kejuruan (SMK)** — studi kasus implementasi **SMK PGRI Pasir Sakti**. Mengintegrasikan tata kelola Kurikulum Merdeka, penilaian otomatis, administrasi wali kelas, e-jurnal & presensi guru/siswa, praktik kerja lapangan (PKL/Vokasi), bursa kerja khusus (BKK), hingga tata kelola keuangan sekolah dalam satu ekosistem yang ringan, responsif, dan aman.
 
 ---
 
-## 2. Rancangan & Peta Jalan Pengembangan Selanjutnya (Roadmap SOP 01–08)
+## 1. Arsitektur & Stack Teknologi
 
-Pengembangan lanjutan dibagi menjadi **3 Klaster Paralel** agar tim pengembang dapat bekerja tanpa konflik kode:
+Repositori ini dibangun menggunakan arsitektur *monorepo* berbasis TypeScript:
 
-| Tahap | Fokus SOP | Ruang Lingkup & Target Deliverables |
-| :--- | :--- | :--- |
-| **Klaster 1** | **SOP-01 & SOP-05**<br>*(Siklus Tahun Ajaran, Kenaikan Kelas & Alumni Lintas Angkatan)* | • **Wizard Kenaikan Kelas & Kelulusan Massal** lintas jurusan (X → XI → XII → status `ALUMNI`) dengan *snapshot* arsip semester lama yang terkunci (*read-only*).<br>• **Portal BKK & Tracer Study (BMW)** yang menampung arsip alumni terdahulu (impor/klaim akun) hingga alumni terbaru. |
-| **Klaster 2** | **SOP-03 & SOP-04**<br>*(Penilaian Rapor Berjenjang & Vokasi Bengkel/Lab)* | • Penyempurnaan alur validasi **Guru Mapel → Wali Kelas → Wakakur → Pengesahan Kepsek**.<br>• **Form Inventaris & Pengajuan Bahan Praktik/Maintenance Bengkel** per konsentrasi keahlian (`Kaprog` → `Waka Sarpras` → `Bendahara`). |
-| **Klaster 3** | **SOP-06, SOP-07 & SOP-08**<br>*(Kepegawaian, E-Payroll & Transparansi Keuangan)* | • Integrasi **Izin Guru + Penugasan Guru Pengganti** agar jam kosong kelas terkendali.<br>• Generator **E-Payroll** berbasis kehadiran GPS, total JP mengajar, dan tunjangan jabatan rangkap.<br>• Dasbor pengawasan realisasi anggaran untuk **Kepala Sekolah & Komite Sekolah**. |
+* **Frontend (`apps/web`):** React, TypeScript, Vite, Tailwind CSS, React Router (Mobile-first Super-App UI).
+* **Backend (`apps/api`):** Fastify, TypeScript, Prisma ORM, PostgreSQL, Zod Validation, PDFKit.
+* **Shared Contracts (`packages/shared`):** Definisi tipe DTO, peran pengguna (`RoleCode`), dan skema validasi bersama antara API dan Web.
 
 ---
 
-## 3. Panduan Setup Lokal untuk Tim Pengembang
+## 2. Kontrak Keamanan & Tata Kelola Peran (4-Layer RBAC)
 
-```bash
-# 1. Clone atau tarik pembaruan terbaru dari branch main
-git clone [https://github.com/Galih-Arno/sims-smk.git](https://github.com/Galih-Arno/sims-smk.git)
-cd sims-smk
+Sistem mendukung **13 peran sekolah** (`ADMIN_SEKOLAH`, `OPERATOR_SEKOLAH`, `WAKAKUR`, `KEPALA_SEKOLAH`, `KAPROG`, `GURU_MAPEL`, `WALI_KELAS`, `WAKA_KESISWAAN`, `WAKA_SARPRAS`, `WAKA_HUMAS`, `BENDAHARA`, `TU`, `KOMITE_SEKOLAH`) serta `SYSTEM_OWNER`.
 
-# 2. Instal dependensi monorepo
-npm install
-
-# 3. Siapkan environment & database (sesuaikan .env pada apps/api)
-npm --workspace=@sims/api exec prisma generate
-npm --workspace=@sims/api exec prisma migrate deploy
-
-# 4. (Opsional) Seed akun organisasi & role sekolah
-npm --workspace=@sims/api exec tsx prisma/seed-sakti-org.ts
-
-# 5. Jalankan server API & Web secara bersamaan
-npm run dev
-```
-
---
-
-## 4. Protokol Wajib Serah Terima Kerja (Team ↔ Lead Developer Handoff)
-
-Setiap anggota tim yang menyelesaikan tugas atau mengoper pekerjaan kembali WAJIB menyertakan laporan ringkas pada Pull Request / pesan serah terima dengan format berikut:
-
-    1. Ringkasan Perubahan (What Was Done): Daftar file/modul yang diubah beserta fungsi dan tampilan UI/UX yang sudah berjalan.
-
-    2. Status Uji Coba (Verification): Bukti lulus tsc --noEmit / tes API dan akun peran yang sudah diuji.
-
-    3. Tindakan Lanjutan (Next Action Items for Lead/Next Dev): Bagian yang belum selesai, penyesuaian skema database yang dibutuhkan, atau langkah konkret yang harus dikerjakan berikutnya saat pekerjaan dioper kembali.
---
-
-## 5. Panduan & Master Prompt untuk Tim yang Menggunakan AI
-
-Jika anggota tim menggunakan asisten AI (Gemini, Cursor, Copilot, Claude, dll.) untuk mempercepat pengembangan, wajib salin dan tempel Master Prompt di bawah ini pada awal sesi chat AI agar kode yang dihasilkan tetap mematuhi arsitektur SAKTI-Ku (SIMS SMK) dan tidak merusak integrasi yang sudah berjalan:
-
-```
-Bertindaklah sebagai Senior Full-Stack Engineer untuk proyek SAKTI-Ku (SIMS SMK Super-App) berbasis monorepo TypeScript (React + Tailwind CSS di apps/web, Fastify + Prisma PostgreSQL di apps/api, dan kontrak tipe di packages/shared).
-
-PATUHI PRINSIP ARSITEKTUR BERIKUT TANPA PENGECUALIAN:
-1. Multi-Role RBAC (14 Peran Resmi): Gunakan RoleCode dari @sims/shared dan helper di apps/web/src/lib/access.ts (allJobTitles, rolesAtSchool, isKaprog, isWakakur, dll.). Satu akun dapat memegang jabatan rangkap (misal KAPROG + WALI_KELAS + GURU_MAPEL). Jangan pernah membuat role baru di luar 14 RoleCode.
-2. Kontrak Layout & Mobile-First: Semua halaman fitur baru wajib dibungkus komponen AppPageShell (apps/web/src/components/shell/AppPageShell.tsx) dengan ruang aman bottom navigation dock, kontrak z-index yang bersih, dan tombol ramah sentuhan (min-h-11).
-3. Orkestrasi Estafet 8 SOP (apps/web/src/lib/sopWorkflow.ts): Setiap form input harus mengikuti pendekatan riil di lapangan—gunakan smart defaults/pre-fill (seperti default "HADIR" pada presensi 1-ketuk di TeachingJournalPage.tsx), dukung offline queue bila perlu, dan pastikan output form otomatis tersambung ke peran berikutnya (handoff) sesuai SOP-01 s.d. SOP-08.
-4. Longitudinal & Lintas Jurusan: Data akademik terikat pada Tahun Pelajaran/Semester dan Konsentrasi Keahlian. Arsip semester lalu bersifat immutable (read-only), dan kelulusan kelas XII bertransisi ke status ALUMNI lintas angkatan.
-5. Verifikasi Sebelum Selesai: Pastikan tidak ada error TypeScript (npm --workspace=@sims/web exec tsc -- --noEmit) dan sertakan ringkasan perubahan (termasuk UI/UX) + tindakan lanjutan untuk serah terima tim.
-
-Tugas saya saat ini adalah: [TULIS TUGAS / SOP YANG AKAN DIKERJAKAN DI SINI]
-```
+Setiap fitur bisnis wajib menjaga konsistensi pada keempat lapisan berikut untuk mencegah *domino effect*:
+1. **Discovery Layer (`SuperAppHome.tsx` & `SopFrameworkPage.tsx`):** Visibilitas kartu layanan dan alur SOP sesuai peran aktif.
+2. **Routing Layer (`App.tsx`):** Proteksi rute berbasis `<RequireAccess>` agar tidak terjadi pengalihan tak terduga.
+3. **Component Action Layer (`AcademicPages.tsx`, `CurriculumPages.tsx`, dll.):** Kendali tombol aksi tulis (`canManage` / `canCoordinate`) selaras dengan hak akses pengguna.
+4. **API & Data Scope Layer (`*.routes.ts` & `scope.ts`):** Validasi otorisasi *server-side* (`assertCanManage`, `assertCanCoordinate`, `loadScope`) sebelum mutasi database.
 
 ---
 
-### Push ke GitHub Setelah `README.md` Disimpan
+## 3. Baseline Capaian Terkini & Integrasi 8 SOP Operasional
 
-Setelah `README.md` tersimpan rapi, jalankan 3 perintah pendek ini di terminal:
+### A. Kompas Operasional & Kurikulum (`/sop-kerja`, `/mata-pelajaran`, `/penugasan`, `/pembelajaran`)
+* **Otoritas Penuh Waka Kurikulum & Operator:** Pengelolaan master mata pelajaran (`/mapel` & `/mata-pelajaran`), struktur kurikulum (`/kurikulum`), pembagian beban mengajar (`/penugasan`), dan penetapan wali kelas (`/wali-kelas`).
+* **Penugasan Multi-Kelas 1-Klik (`/penugasan`):** Waka Kurikulum dapat menugaskan satu guru dan satu mata pelajaran ke banyak rombel/jurusan sekaligus dalam satu aksi, dengan tampilan tabel terkelompok (*grouped class badges*).
+* **Salin TP & Lingkup Materi Antar Kelas Paralel (`/pembelajaran`):** Guru pengampu cukup menyusun atau mengimpor Tujuan Pembelajaran (TP) dan Lingkup Materi (LM) satu kali pada kelas induk, lalu menyalinnya ke kelas paralel lain dalam satu klik.
 
-```bash
-git add README.md
-git commit -m "docs(readme): lengkapi rekap arsitektur, detail pembaruan UI/UX, roadmap 8 SOP, dan master prompt AI"
-git push origin main
+### B. Siklus Tahun Ajaran, E-Jurnal, Penilaian & Rapor (SOP-01, SOP-02, SOP-03)
+* **Wizard Kenaikan Kelas & Kelulusan Massal (`/kenaikan-kelas` — SOP-01):** Transisi rombel lintas tingkat (`X → XI → XII`) secara massal tanpa merusak arsip nilai semester sebelumnya, serta kelulusan kelas XII menjadi Alumni (`isActive: false`, melepas `classId` aktif).
+* **E-Jurnal Mengajar & Presensi 1-Ketuk (`/guru/jurnal` — SOP-02):** Pembaruan otomatis daftar siswa saat berpindah rombel dengan status default *Hadir (H)* sehingga guru cukup mengetuk siswa yang berhalangan (`S/I/A`).
+* **Pipeline Penilaian & Generator Deskripsi (`/guru/nilai`, `/guru/nilai-akhir`, `/guru/deskripsi-capaian` — SOP-03):** Input/impor nilai per kelas, kalkulasi nilai akhir sesuai kebijakan semester (`/pengaturan-nilai`), serta generator otomatis narasi deskripsi capaian untuk dikirim ke Wali Kelas.
+* **Validasi & Pengesahan Rapor Massal (`/wali/penerimaan`, `/validasi-rapor`, `/pengesahan-rapor`):** Pemantauan kelengkapan nilai lintas mapel secara *real-time*, persetujuan massal Waka Kurikulum, dan pengesahan resmi Kepala Sekolah (cetak PDF).
+
+### C. Vokasi SMK, BKK & Tracer Study (SOP-05)
+* **Estafet Lulusan ke Tracer Study (`/vokasi/bkk`):** Siswa yang diluluskan melalui Wizard Kelulusan otomatis muncul sebagai pintasan pencatatan status **BMW** (*Bekerja, Melanjutkan Kuliah, Wirausaha*), dilengkapi direktori alumni lintas angkatan dan filter kompetensi keahlian.
+
+---
+
+## 4. Audit Celah Lapangan & Solusi Rekayasa
+
+Berdasarkan evaluasi operasional SMK pada jam sibuk dan pekan penilaian, terdapat **5 titik kritis** yang menjadi fokus penguatan arsitektur:
+
+| Domain | Celah Saat Ini | Realitas Lapangan di SMK | Solusi Rekayasa |
+| :--- | :--- | :--- | :--- |
+| **1. Kolaborasi Mengajar (*Team Teaching* & Guru Pengganti)** | Satu mapel pada satu kelas dikunci ke satu `teacherId` tunggal. | Mapel kejuruan/produktif & Projek IPAS sering diampu 2 guru bersamaan (*Team Teaching*), atau guru piket menggantikan guru yang izin. | Tambahkan relasi `TeachingAssignmentCoTeacher` di Prisma agar Guru Pendamping bisa mengisi E-Jurnal & nilai TP pada kelas yang sama, sementara Guru Utama tetap menjadi penanggung jawab nilai akhir rapor. |
+| **2. Peran Struktural Kaprog & Praktik Industri (PKL/TEFA)** | Peran `KAPROG` sudah ada di `RoleCode`, namun belum memiliki dasbor monitoring khusus kompetensi keahlian. | Kepala Program Keahlian (TJKT, TSM, AKL, BDP, PH) perlu memantau kesiapan nilai produktif jurusannya, penempatan PKL, dan jadwal uji kompetensi (UKK). | Tambahkan filter cakupan jurusan untuk `KAPROG` pada monitoring nilai kejuruan, inventaris bengkel/lab, dan persetujuan lokasi PKL. |
+| **3. Ketahanan Sinyal & Kecepatan Input Mobile (*Offline-First & Optimistic UI*)** | Guru di bengkel/lab sering mengalami koneksi seluler tidak stabil saat mengisi presensi dan jurnal. | Jika koneksi putus saat mengetuk presensi `S/I/A` atau menyimpan nilai, guru tidak boleh kehilangan data ketikan. | Terapkan *Optimistic UI* (perubahan status instan tanpa menunggu spinner), antrean *local draft* (`localStorage`/IndexedDB) untuk form nilai & jurnal, serta kompresi otomatis foto bukti jurnal/izin sebelum diunggah. |
+| **4. Estafet Lintas Modul (Presensi → Wali Kelas → BK)** | Data presensi harian/mapel, pembinaan karakter, dan status SPP berdiri di layar terpisah. | Wali kelas dan Guru BK butuh peringatan dini otomatis (*early warning*) jika siswa alpa 3 hari berturut-turut, dan syarat cetak rapor butuh status bebas tanggungan. | Bangun mesin agregasi *Readiness & Alert* terpadu di beranda Wali Kelas: rangkuman siswa rawan bolos, kelengkapan nilai seluruh mapel, dan status administrasi dalam satu kartu ringkas. |
+| **5. Pengalaman Pengguna Modern (*Mobile-First Ergonomics & Motion*)** | Sebagian tabel master masih membutuhkan geser horizontal pada layar ponsel `360px`. | 80%+ guru dan siswa mengakses aplikasi lewat ponsel Android/iOS dengan satu tangan. | Terapkan *adaptive card-table* pada layar kecil, transisi halaman & *bottom-sheet modal* yang halus (GPU-accelerated `transform`/`opacity` 60fps), *skeleton loading* pengganti layar putih kosong, dan *command palette* pencarian cepat layanan. |
+
+---
+
+## 5. Peta Jalan Eksekusi Pengembangan Lanjutan (Production Roadmap)
+
+### Fase 1 — Keandalan Alur Akademik & Multi-Peran Lapangan (Prioritas Segera)
+1. **Impor Nilai Excel End-to-End Terverifikasi:** Templat `.xlsx` per kelas/mapel dapat diunduh guru, diisi *offline*, diunggah dengan pratinjau validasi baris-per-baris, dan langsung mengalir ke Nilai Akhir & Wali Kelas.
+2. **Dukungan *Team Teaching* (`Co-Teacher`) & Multi-Peran Guru:** Satu mapel di satu kelas dapat memiliki guru pendamping, serta guru yang merangkap **Kaprog + Guru Mapel + Wali Kelas** dapat berpindah konteks kerja tanpa *logout*.
+3. **Audit Konsistensi API & Validasi:** Penyeragaman parameter paginasi (`pageSize`), kode error terstandar, dan *audit log* tercatat rapi pada setiap aksi kritis.
+
+### Fase 2 — Pengalaman Mobile Super-App, Performa & Animasi Halus
+1. **Skeleton Screens & Optimistic Updates:** Menghilangkan jeda *loading* kaku pada daftar siswa, presensi 1-ketuk, dan tabel nilai.
+2. **Adaptive Mobile Views & Bottom-Sheet Modals:** Mengubah modal desktop menjadi *bottom-sheet* ergonomis di perangkat seluler dengan transisi mikro ringan.
+3. **Progressive Web App (PWA) & Caching:** Menambahkan `manifest.json` dan *Service Worker* agar aplikasi dapat dipasang langsung di layar utama ponsel guru/siswa layaknya aplikasi *native*.
+
+### Fase 3 — Kecerdasan Operasional SMK (Vokasi, PKL, BKK & Keuangan)
+1. **Integrasi Penuh Vokasi (SOP-04 & PKL → Rapor):** Manajemen inventaris bengkel/lab per jurusan serta sinkronisasi otomatis nilai pembimbing industri & jurnal PKL ke komponen rapor semester kelas XII.
+2. **E-Payroll & Keuangan Sekolah (SOP-07 & SOP-08):** Rekap otomatis jam mengajar & kehadiran pegawai ke komponen honor bulanan, pemantauan tunggakan SPP per rombel, serta dasbor eksekutif Kepala Sekolah & Komite.
+
+---
+
+## 6. Daftar Akun Pengujian & Operasional Lapangan
+
+Seluruh akun operasional **SMK PGRI Pasir Sakti** pada lingkungan pengujian menggunakan kata sandi default: **`Sakti2026!`**
+
+### A. Pimpinan & Komite Sekolah
+| Nama Pengguna | Email Login | Password | Peran (`RoleCode`) |
+| :--- | :--- | :--- | :--- |
+| Kepala Sekolah | `kepsek@smkpgripasirsakti.sch.id` | `Sakti2026!` | `KEPALA_SEKOLAH` |
+| I Nyoman Yunianto | `komite@smkpgripasirsakti.sch.id` | `Sakti2026!` | `KOMITE_SEKOLAH` |
+
+### B. Wakil Kepala Sekolah (Waka)
+| Nama Pengguna | Email Login | Password | Peran (`RoleCode`) |
+| :--- | :--- | :--- | :--- |
+| Nurcholis, S.Pd | `wakakur@smkpgripasirsakti.sch.id` | `Sakti2026!` | `WAKAKUR`, `GURU_MAPEL` |
+| Nurul Huda, S.Pd | `wakakesiswaan@smkpgripasirsakti.sch.id` | `Sakti2026!` | `WAKA_KESISWAAN`, `GURU_MAPEL` |
+| Didit Agung Prabowo, ST | `wakasarpras@smkpgripasirsakti.sch.id` | `Sakti2026!` | `WAKA_SARPRAS`, `GURU_MAPEL` |
+| Heru Supriyanto, S.Pd | `wakahumas@smkpgripasirsakti.sch.id` | `Sakti2026!` | `WAKA_HUMAS`, `GURU_MAPEL` |
+
+### C. Bendahara, Operator & Tata Usaha (TU)
+| Nama Pengguna | Email Login | Password | Peran (`RoleCode`) |
+| :--- | :--- | :--- | :--- |
+| Sri Yuningsih, S.Pd, M.Si | `bendahara.komite@smkpgripasirsakti.sch.id` | `Sakti2026!` | `BENDAHARA`, `GURU_MAPEL` |
+| Wahyu Eka Sumaryati, S.Pd | `bendahara.bos@smkpgripasirsakti.sch.id` | `Sakti2026!` | `BENDAHARA`, `GURU_MAPEL` |
+| Reni Diah Setiowati, MM | `bendahara.barang@smkpgripasirsakti.sch.id` | `Sakti2026!` | `BENDAHARA`, `TU` |
+| Zulkarnaen | `kepalatu@smkpgripasirsakti.sch.id` | `Sakti2026!` | `TU`, `ADMIN_SEKOLAH` |
+| Yogi Nugroho, SE | `operator@smkpgripasirsakti.sch.id` | `Sakti2026!` | `OPERATOR_SEKOLAH`, `ADMIN_SEKOLAH`, `TU` |
+| Endang Susilowati | `tu.kurikulum@smkpgripasirsakti.sch.id` | `Sakti2026!` | `TU` |
+| Sugeng Wahyudi, A.Md T | `tu.umum@smkpgripasirsakti.sch.id` | `Sakti2026!` | `TU` |
+| Rizky Hermin F., A.Md T | `tu.siswa@smkpgripasirsakti.sch.id` | `Sakti2026!` | `TU` |
+
+### D. Kepala Program Keahlian (Kaprog)
+| Nama Pengguna | Kompetensi Keahlian | Email Login | Password | Peran (`RoleCode`) |
+| :--- | :--- | :--- | :--- | :--- |
+| Filma Andriani, S.Kom | TJKT | `kaprog.tjkt@smkpgripasirsakti.sch.id` | `Sakti2026!` | `KAPROG`, `GURU_MAPEL` |
+| Made Raiyanto, ST | TSM | `kaprog.tsm@smkpgripasirsakti.sch.id` | `Sakti2026!` | `KAPROG`, `GURU_MAPEL` |
+| Sulistianingsih, SE | AKL | `kaprog.akl@smkpgripasirsakti.sch.id` | `Sakti2026!` | `KAPROG`, `GURU_MAPEL` |
+| Lia Apriyanti, M.Pd | BDP | `kaprog.bdp@smkpgripasirsakti.sch.id` | `Sakti2026!` | `KAPROG`, `GURU_MAPEL` |
+| Ni Wayan Seriyati, SE | PH | `kaprog.ph@smkpgripasirsakti.sch.id` | `Sakti2026!` | `KAPROG`, `GURU_MAPEL` |
+
+### E. Guru Mata Pelajaran & Wali Kelas
+| Nama Pengguna | Email Login | Password | Peran (`RoleCode`) | Keterangan Ampuan |
+| :--- | :--- | :--- | :--- | :--- |
+| Suwartini, S.Pd | `suwartini@smkpgripasirsakti.sch.id` | `Sakti2026!` | `GURU_MAPEL`, `WALI_KELAS` | Mapel **B. LAMPUNG** & Wali Kelas |
+| Galih Gratia Arno, S.Kom | `galih@smkpgripasirsakti.sch.id` | `Sakti2026!` | `GURU_MAPEL` | Akun baru — Mapel **ASJ** (`XI TJKT 1–2`, `XII TJKT 1–2`) |
+
+---
+
+## 7. Super Master Prompt (VS Code & Cursor AI Agent Blueprint)
+
+Buka folder root repositori proyek ini di **VS Code / Cursor** (berlaku lintas OS: Linux, Windows, maupun macOS), aktifkan panel **AI Agent / Composer**, lalu salin dan tempelkan seluruh prompt berikut agar agen AI melakukan analisis mendalam, keputusan arsitektur yang matang, dan pengeditan kode secara otomatis di dalam *workspace* proyek aktif:
+
+````markdown
+# ROLE & ENGINEERING MANDATE
+Anda adalah **Principal Full-Stack Software Engineer & Education Systems Architect** untuk proyek **SAKTI-Ku (SIMS SMK)** — Super-App manajemen Sekolah Menengah Kejuruan (SMK) berbasis monorepo TypeScript:
+- `apps/web`: React + TypeScript + Vite + Tailwind CSS + React Router
+- `apps/api`: Fastify + TypeScript + Prisma ORM + PostgreSQL + Zod + PDFKit
+- `packages/shared`: Shared DTO contracts, `RoleCode`, dan skema validasi
+
+---
+
+# PROTOKOL WORKSPACE LINTAS OS & PENGEDITAN OTOMATIS (WAJIB DIPATUHI)
+1. **Verifikasi Root Workspace Aktif (Jangan Membuat Direktori Baru):**
+   - **DILARANG** membuat folder/direktori repositori baru atau mengasumsikan *absolute path* tertentu (tim pengembang bekerja lintas OS: Linux, Windows, macOS).
+   - Periksa terlebih dahulu apakah *workspace* yang sedang terbuka sudah berada di root proyek yang memuat `package.json`, `README.md`, `apps/api`, `apps/web`, dan `packages/shared`.
+   - **Jika struktur root proyek tersebut belum terdeteksi**, berhenti dan minta pengguna mengarahkan atau membuka folder root proyeknya terlebih dahulu sebelum menjalankan perintah atau membuat file apa pun.
+   - Selalu gunakan **jalur relatif (*relative paths*)** dari root *workspace* aktif.
+2. **Gunakan Native File Edit & Diff Tools Editor Secara Otomatis:**
+   - Lakukan seluruh pembacaan dan pengeditan file secara langsung menggunakan *built-in file editing tools* workspace (`read_file`, `edit_file` / `apply_diff`) agar perubahan presisi, terstruktur, dan terhindar dari kesalahan pemotongan skrip terminal.
+
+---
+
+# METODOLOGI ANALISIS & KEPUTUSAN REKAYASA (WAJIB SEBELUM CODING)
+
+Setiap kali akan mengerjakan suatu fitur atau pembaruan, Anda **WAJIB** melewati 5 gerbang analisis berikut sebelum menulis atau mengubah kode:
+
+1. **Analisa Kode Eksisting & Inventarisasi Modul (*Reuse-Before-Build*):**
+   - Telusuri seluruh file terkait di `apps/api/prisma/schema.prisma`, `packages/shared`, `apps/api/src/modules/`, dan `apps/web/src/` (`pages/`, `components/`, `lib/`).
+   - **Ambil keputusan arsitektur yang matang:** Evaluasi apakah fitur/komponen yang dibutuhkan **sudah tersedia** (tinggal dihubungkan/diperbaiki), **cukup diperluas (*extend*)** dari modul/komponen yang ada, atau **memang harus dibuat baru** karena belum ada fondasinya. **DILARANG** membuat komponen, endpoint, atau tabel duplikat jika fungsionalitas dasarnya sudah ada.
+2. **Prinsip Efek Domino (*End-to-End Impact Tracing* & 4-Layer RBAC):**
+   - Petakan seluruh efek domino dari setiap perubahan ke hulu dan hilir:
+     `Prisma Schema` ↔ `Shared DTO & Zod Schema` ↔ `API Service & Route Guard` ↔ `Frontend State & UI Action` ↔ `Modul Hilir Terdampak (Rapor, Wali Kelas, Keuangan, Audit Log)`.
+   - Pastikan **Kontrak 4-Layer RBAC** selalu sinkron di keempat lapisan:
+     - **Layer 1 (Menu/Discovery):** `SuperAppHome.tsx` & `SopFrameworkPage.tsx`
+     - **Layer 2 (Router Guard):** `App.tsx` (`<RequireAccess>`)
+     - **Layer 3 (Component Action):** Kendali tombol tulis/hapus di UI (`canManage`, `canCoordinate`, `canWrite`)
+     - **Layer 4 (API & Scope Guard):** `*.routes.ts` & `scope.ts` (`assertCanManage`, `assertCanCoordinate`, `loadScope`)
+3. **Simulasi Skenario Pengguna Riil di Lapangan (*Validated Field Scenarios*):**
+   - Uji rancangan logika terhadap skenario operasional SMK yang tervalidasi (merujuk daftar akun & peran nyata pada Bagian 6 `README.md`, seperti `WAKAKUR`, `KAPROG`, `GURU_MAPEL`, `WALI_KELAS`, `BENDAHARA`, `TU`, `KEPALA_SEKOLAH`), termasuk skenario batas (*edge cases*):
+     - Guru merangkap jabatan ganda (`KAPROG` + `GURU_MAPEL` + `WALI_KELAS`).
+     - Satu mapel diampu banyak kelas lintas jurusan maupun 2+ guru bersamaan (*Team Teaching*).
+     - Guru piket/pengganti saat guru utama izin.
+     - Koneksi seluler terputus sementara di bengkel/lab saat input presensi atau nilai.
+4. **Analisis Celah Penggunaan & Keamanan (*Usability & Security Gap Audit*):**
+   - **Celah Keamanan:** Periksa potensi *IDOR* (akses lintas sekolah/kelas yang bukan haknya), *privilege escalation* antar 13 peran, validasi input Zod (termasuk batas enum `pageSize`), serta pencatatan *audit trail* pada mutasi sensitif.
+   - **Celah Penggunaan (UX):** Identifikasi titik gesekan (*friction*) seperti input berulang per kelas, layar penuh geser horizontal di ponsel `360px`, atau hilangnya data saat koneksi terputus.
+5. **Preservasi UI/UX Eksisting (Zero Visual Regression):**
+   - **JANGAN mengubah** tema warna utama, struktur navigasi *floating bottom bar*, tata letak kartu beranda Super-App, tipografi, maupun komponen desain yang sudah berjalan baik.
+   - Pembaruan antarmuka **HANYA diperbolehkan** jika dibutuhkan untuk mengakomodasi alur logika riil di lapangan (misalnya: lencana status, *bottom-sheet modal* responsif pada layar seluler `360px`, *skeleton loading*, atau filter konteks peran).
+
+---
+
+# ROADMAP PENGEMBANGAN BERTAHAP (EKSEKUSI TERUKUR)
+
+## FASE 1: Kolaborasi Mengajar, Multi-Peran & Keandalan Akademik
+1. **Team Teaching (`Co-Teacher`) & Guru Pengganti (Inval):**
+   - Tambahkan relasi `TeachingAssignmentCoTeacher` pada `apps/api/prisma/schema.prisma` agar Guru Utama dan Guru Pendamping sama-sama dapat mengisi **E-Jurnal Mengajar**, **TP & Lingkup Materi**, dan **Input Nilai**, sementara **1 nilai akhir rapor** per mapel tetap terjaga tanpa duplikasi. Sediakan opsi penambahan Guru Pendamping pada UI `/penugasan`.
+2. **Multi-Peran Tanpa Gesekan (*Seamless Multi-Role Context*):**
+   - Pastikan seluruh layar kerja (Rencana Pembelajaran, Input Nilai, E-Jurnal, dan Penerimaan Wali Kelas) berjalan mulus ketika satu akun memiliki kombinasi peran ganda (`KAPROG` + `GURU_MAPEL` + `WALI_KELAS`).
+3. **Dasbor & Cakupan Kepala Program Keahlian (`KAPROG`):**
+   - Sediakan monitoring dan filter berbasis kompetensi keahlian (TJKT, TSM, AKL, BDP, PH) untuk nilai kejuruan (`KEJURUAN`), inventaris bengkel/lab, dan kesiapan Uji Kompetensi Keahlian (UKK).
+
+## FASE 2: Ketahanan Jaringan Lapangan (*Offline-Safe*) & Responsivitas Mobile
+1. **Proteksi Draf Lokal (*Auto-Save Draft*) & Optimistic UI:**
+   - Terapkan *Optimistic UI* pada presensi 1-ketuk dan simpan otomatis draf ketikan nilai/jurnal ke `localStorage` agar data tidak hilang bila sinyal seluler di bengkel/lab terputus sementara.
+2. **Ergonomi Perangkat Seluler (`360px` Mobile-First):**
+   - Pastikan seluruh tabel data, form impor Excel, dan modal aksi nyaman dioperasikan dengan satu tangan di ponsel tanpa *horizontal overflow* yang merusak tata letak.
+
+## FASE 3: Estafet Lintas Modul (Vokasi PKL, Kesiswaan, E-Payroll & Keuangan)
+1. **Integrasi Vokasi & PKL ke Rapor (SOP-04 & SOP-05):**
+   - Hubungkan inventaris bengkel/lab per jurusan, persetujuan pengajuan bahan praktik (`Kaprog -> Waka Sarpras -> Bendahara`), serta sinkronisasi nilai pembimbing industri & jurnal PKL ke komponen rapor semester kelas XII.
+2. **Early Warning Wali Kelas & Tata Kelola Keuangan (SOP-06, SOP-07, SOP-08):**
+   - Tampilkan ringkasan kesiapan siswa di beranda Wali Kelas: akumulasi ketidakhadiran (`S/I/A` dengan peringatan dini alpa beruntun), kelengkapan nilai seluruh mapel, serta status bebas tunggungan komite/SPP menjelang ujian atau pencetakan rapor.
+   - Pastikan rekap kehadiran dan jam mengajar pegawai terhubung bersih ke modul E-Payroll (`/keuangan/payroll`).
+
+---
+
+# PROTOKOL LAPORAN & VERIFIKASI SETIAP FASE
+Sebelum menulis kode pada setiap fase, tampilkan terlebih dahulu **Matriks Keputusan Rekayasa** (Komponen/API yang dipakai ulang vs. diperluas vs. dibuat baru, serta daftar efek domino yang dijaga). Setelah menerapkan *diff* di *workspace*, jalankan validasi berikut dari root *workspace* dan pastikan **0 error**:
+- `npx prisma validate --schema=apps/api/prisma/schema.prisma` (jika menyentuh schema Prisma)
+- `npm --workspace=@sims/shared exec tsc -- --noEmit` (jika menyentuh `packages/shared`)
+- `npm --workspace=@sims/api exec tsc -- --noEmit`
+- `npm --workspace=@sims/web exec tsc -- --noEmit`
 ```
+---
 
-## Akun
-
-* **Kepala Sekolah**
-* Email: `kepsek@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `KEPALA_SEKOLAH`
-
-
-* **I Nyoman Yunianto**
-* Email: `komite@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `KOMITE_SEKOLAH`
-
-
-* **Nurcholis, S.Pd**
-* Email: `wakakur@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `WAKAKUR`, `GURU_MAPEL`
-
-
-* **Nurul Huda, S.Pd**
-* Email: `wakakesiswaan@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `WAKA_KESISWAAN`, `GURU_MAPEL`
-
-
-* **Didit Agung Prabowo, ST**
-* Email: `wakasarpras@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `WAKA_SARPRAS`, `GURU_MAPEL`
-
-
-* **Heru Supriyanto, S.Pd**
-* Email: `wakahumas@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `WAKA_HUMAS`, `GURU_MAPEL`
-
-
-* **Sri Yuningsih, S.Pd, M.Si**
-* Email: `bendahara.komite@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `BENDAHARA`, `GURU_MAPEL`
-
-
-* **Wahyu Eka Sumaryati, S.Pd**
-* Email: `bendahara.bos@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `BENDAHARA`, `GURU_MAPEL`
-
-
-* **Reni Diah Setiowati, MM**
-* Email: `bendahara.barang@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `BENDAHARA`, `TU`
-
-
-* **Zulkarnaen**
-* Email: `kepalatu@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `TU`, `ADMIN_SEKOLAH`
-
-
-* **Yogi Nugroho, SE**
-* Email: `operator@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `OPERATOR_SEKOLAH`, `ADMIN_SEKOLAH`, `TU`
-
-
-* **Endang Susilowati**
-* Email: `tu.kurikulum@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `TU`
-
-
-* **Sugeng Wahyudi, A.Md T**
-* Email: `tu.umum@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `TU`
-
-
-* **Rizky Hermin F., A.Md T**
-* Email: `tu.siswa@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `TU`
-
-
-* **Filma Andriani, S.Kom**
-* Email: `kaprog.tjkt@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `KAPROG`, `GURU_MAPEL`
-
-
-* **Made Raiyanto, ST**
-* Email: `kaprog.tsm@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `KAPROG`, `GURU_MAPEL`
-
-
-* **Sulistianingsih, SE**
-* Email: `kaprog.akl@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `KAPROG`, `GURU_MAPEL`
-
-
-* **Lia Apriyanti, M.Pd**
-* Email: `kaprog.bdp@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `KAPROG`, `GURU_MAPEL`
-
-
-* **Ni Wayan Seriyati, SE**
-* Email: `kaprog.ph@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `KAPROG`, `GURU_MAPEL`
-
-
-* **Suwartini, S.Pd**
-* Email: `suwartini@smkpgripasirsakti.sch.id`
-* Password: `Sakti2026!`
-* Role: `GURU_MAPEL`, `WALI_KELAS`
 

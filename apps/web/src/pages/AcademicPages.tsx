@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import type { AcademicOptionsDto, ImportCommitDto, ImportPreviewDto, SchoolDto, TeacherAccountResult } from "@sims/shared";
+import { useEffect, useState, type FormEvent, useMemo } from "react";
+import type { AcademicOptionsDto, ImportCommitDto, ImportPreviewDto, SchoolDto, TeacherAccountResult, PageResult } from "@sims/shared";
 import { DataScreen, type ColumnDef, type FieldDef } from "../components/data/DataScreen.tsx";
 import { StudentImportDialog } from "../components/students/StudentImportDialog.tsx";
 import { ApiClientError, api } from "../lib/api.ts";
@@ -342,7 +342,7 @@ function Master({
   creatable?: boolean;
   editable?: boolean;
 }) {
-  const { schoolId, canManage } = useSchoolScope();
+  const { schoolId, canManage, canCoordinate } = useSchoolScope();
   const [reloadToken, setReloadToken] = useState(0);
   const options = useOptions(schoolId, reloadToken);
   if (!schoolId) return <MissingSchool />;
@@ -353,7 +353,7 @@ function Master({
       endpoint={screen(schoolId, path)}
       columns={columns}
       fields={fields(options)}
-      canWrite={canManage}
+      canWrite={canCoordinate}
       creatable={creatable}
       editable={editable}
       reloadToken={reloadToken}
@@ -507,7 +507,7 @@ function roleLabel(codes: unknown): string {
 }
 
 export function TeachersPage() {
-  const { schoolId, canManage } = useSchoolScope();
+  const { schoolId, canManage, canCoordinate } = useSchoolScope();
   const [reloadToken, setReloadToken] = useState(0);
   const [accountError, setAccountError] = useState("");
   const [notice, setNotice] = useState("");
@@ -875,26 +875,373 @@ export function SubjectsPage() {
   );
 }
 
+type TeachingRowDto = {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  subjectId: string;
+  subjectName: string;
+  classId: string;
+  className: string;
+  academicPeriodId: string;
+  periodName: string;
+};
+
+type GroupedTeachingDto = {
+  key: string;
+  teacherId: string;
+  teacherName: string;
+  subjectId: string;
+  subjectName: string;
+  academicPeriodId: string;
+  periodName: string;
+  classes: { assignmentId: string; classId: string; className: string }[];
+};
+
 export function TeachingsPage() {
+  const { schoolId, canCoordinate } = useSchoolScope();
+  const [reloadToken, setReloadToken] = useState(0);
+  const options = useOptions(schoolId, reloadToken);
+  const [rows, setRows] = useState<TeachingRowDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [teacherId, setTeacherId] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+  const [periodId, setPeriodId] = useState("");
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<{ label: string; ids: string[] } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    let active = true;
+    setLoading(true);
+    (async () => {
+      const all: TeachingRowDto[] = [];
+      let page = 1;
+      while (true) {
+        const res = await api<PageResult<TeachingRowDto>>(`/api/v1/schools/${schoolId}/teaching-assignments?page=${page}&pageSize=50`);
+        all.push(...res.items);
+        if (all.length >= res.total || res.items.length === 0) break;
+        page += 1;
+      }
+      if (active) setRows(all);
+    })()
+      .catch((caught) => {
+        if (active) setError(caught instanceof ApiClientError ? caught.message : "Data penugasan gagal dimuat.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [schoolId, reloadToken]);
+
+  const grouped = useMemo<GroupedTeachingDto[]>(() => {
+    const map = new Map<string, GroupedTeachingDto>();
+    const keyword = search.trim().toLowerCase();
+    for (const row of rows) {
+      const key = `${row.teacherId}::${row.subjectId}::${row.academicPeriodId}`;
+      let group = map.get(key);
+      if (!group) {
+        group = {
+          key,
+          teacherId: row.teacherId,
+          teacherName: row.teacherName,
+          subjectId: row.subjectId,
+          subjectName: row.subjectName,
+          academicPeriodId: row.academicPeriodId,
+          periodName: row.periodName,
+          classes: [],
+        };
+        map.set(key, group);
+      }
+      group.classes.push({ assignmentId: row.id, classId: row.classId, className: row.className });
+    }
+    const list = [...map.values()].map((group) => ({
+      ...group,
+      classes: [...group.classes].sort((a, b) => a.className.localeCompare(b.className, "id")),
+    }));
+    if (!keyword) return list;
+    return list.filter(
+      (item) =>
+        item.teacherName.toLowerCase().includes(keyword) ||
+        item.subjectName.toLowerCase().includes(keyword) ||
+        item.periodName.toLowerCase().includes(keyword) ||
+        item.classes.some((cls) => cls.className.toLowerCase().includes(keyword)),
+    );
+  }, [rows, search]);
+
+  if (!schoolId) return <MissingSchool />;
+
+  function openModal(preset?: GroupedTeachingDto) {
+    setError("");
+    setNotice("");
+    setTeacherId(preset?.teacherId ?? "");
+    setSubjectId(preset?.subjectId ?? "");
+    setPeriodId(preset?.academicPeriodId ?? options?.periods?.[0]?.id ?? "");
+    setSelectedClassIds(preset ? preset.classes.map((c) => c.classId) : []);
+    setModalOpen(true);
+  }
+
+  function toggleClass(id: string) {
+    setSelectedClassIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  }
+
+  async function submitBulk(event: FormEvent) {
+    event.preventDefault();
+    if (!teacherId || !subjectId || !periodId || selectedClassIds.length === 0) {
+      setError("Pilih guru, mata pelajaran, semester, dan minimal satu kelas.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setNotice("");
+    let created = 0;
+    let skipped = 0;
+    for (const classId of selectedClassIds) {
+      try {
+        await api(`/api/v1/schools/${schoolId}/teaching-assignments`, {
+          method: "POST",
+          body: JSON.stringify({ teacherId, subjectId, classId, academicPeriodId: periodId }),
+        });
+        created += 1;
+      } catch {
+        skipped += 1;
+      }
+    }
+    setSaving(false);
+    setModalOpen(false);
+    setNotice(`Penugasan diperbarui: ${created} kelas ditambahkan${skipped > 0 ? `, ${skipped} kelas sudah terdaftar` : ""}.`);
+    setReloadToken((prev) => prev + 1);
+  }
+
+  async function executeDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    setError("");
+    try {
+      for (const id of confirmDelete.ids) {
+        await api(`/api/v1/schools/${schoolId}/teaching-assignments/${id}`, { method: "DELETE" });
+      }
+      setNotice(`Penugasan "${confirmDelete.label}" dihapus.`);
+      setConfirmDelete(null);
+      setReloadToken((prev) => prev + 1);
+    } catch (caught) {
+      setError(caught instanceof ApiClientError ? caught.message : "Penugasan gagal dihapus.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
-    <Master
-      title="Penugasan mengajar"
-      description="Satu mapel pada satu kelas dan semester hanya memiliki satu guru."
-      path="teaching-assignments"
-      editable={false}
-      columns={[
-        { key: "teacherName", label: "Guru" },
-        { key: "subjectName", label: "Mapel" },
-        { key: "className", label: "Kelas" },
-        { key: "periodName", label: "Semester" },
-      ]}
-      fields={(options) => [
-        { name: "teacherId", label: "Guru", type: "select", required: true, options: asChoices(options?.teachers) },
-        { name: "subjectId", label: "Mata pelajaran", type: "select", required: true, options: asChoices(options?.subjects) },
-        { name: "classId", label: "Kelas", type: "select", required: true, options: asChoices(options?.classes) },
-        { name: "academicPeriodId", label: "Semester", type: "select", required: true, options: asChoices(options?.periods) },
-      ]}
-    />
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-navy-950">Penugasan mengajar</h1>
+          <p className="mt-1 text-sm text-slate-500">Kelola penugasan guru &amp; mata pelajaran ke satu atau banyak kelas sekaligus dalam satu tampilan ringkas.</p>
+        </div>
+        {canCoordinate ? (
+          <button
+            type="button"
+            onClick={() => openModal()}
+            className="rounded-xl bg-teal-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-900"
+          >
+            + Tambah Penugasan
+          </button>
+        ) : null}
+      </div>
+
+      {notice ? <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">{notice}</p> : null}
+      {error && !modalOpen ? <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{error}</p> : null}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Cari nama guru, mata pelajaran, atau kelas..."
+          className="w-full max-w-sm rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-navy-950 focus:outline-none"
+        />
+        <span className="text-xs font-medium text-slate-500">{grouped.length} kelompok penugasan ({rows.length} rombel)</span>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <tr>
+                <th className="px-4 py-3.5">Guru</th>
+                <th className="px-4 py-3.5">Mapel</th>
+                <th className="px-4 py-3.5">Kelas Ampuan</th>
+                <th className="px-4 py-3.5">Semester</th>
+                {canCoordinate ? <th className="px-4 py-3.5 text-right">Aksi</th> : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={canCoordinate ? 5 : 4} className="px-4 py-8 text-center text-slate-500">Memuat data penugasan...</td>
+                </tr>
+              ) : grouped.length === 0 ? (
+                <tr>
+                  <td colSpan={canCoordinate ? 5 : 4} className="px-4 py-8 text-center text-slate-500">Belum ada penugasan mengajar.</td>
+                </tr>
+              ) : (
+                grouped.map((group) => (
+                  <tr key={group.key} className="hover:bg-slate-50/70">
+                    <td className="px-4 py-3.5 font-semibold text-slate-900">{group.teacherName}</td>
+                    <td className="px-4 py-3.5 font-medium text-slate-700">{group.subjectName}</td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {group.classes.map((cls) => (
+                          <span
+                            key={cls.assignmentId}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-bold tracking-wide text-indigo-900 shadow-2xs"
+                          >
+                            <span>{cls.className}</span>
+                            {canCoordinate ? (
+                              <button
+                                type="button"
+                                title={`Lepas kelas ${cls.className}`}
+                                onClick={() =>
+                                  setConfirmDelete({
+                                    label: `${group.teacherName} · ${group.subjectName} (${cls.className})`,
+                                    ids: [cls.assignmentId],
+                                  })
+                                }
+                                className="ml-0.5 rounded px-1 text-indigo-500 hover:bg-indigo-200/70 hover:text-red-700"
+                              >
+                                ×
+                              </button>
+                            ) : null}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-slate-600">{group.periodName}</td>
+                    {canCoordinate ? (
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openModal(group)}
+                            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            + Kelas
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setConfirmDelete({
+                                label: `${group.teacherName} · ${group.subjectName} (Semua ${group.classes.length} kelas)`,
+                                ids: group.classes.map((c) => c.assignmentId),
+                              })
+                            }
+                            className="rounded-lg border border-red-200 bg-red-50/60 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {modalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-navy-950">Penugasan Guru Multi-Kelas</h2>
+                <p className="mt-0.5 text-xs text-slate-500">Pilih guru, mata pelajaran, dan centang satu atau banyak kelas sekaligus.</p>
+              </div>
+              <button type="button" onClick={() => setModalOpen(false)} className="rounded-lg px-2 py-1 text-sm text-slate-400 hover:bg-slate-100 hover:text-slate-700">✕</button>
+            </div>
+            <form onSubmit={submitBulk} className="mt-4 space-y-4">
+              {error ? <p className="rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-700">{error}</p> : null}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="text-xs font-semibold text-slate-700">
+                  Guru Pengampu
+                  <select className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-normal" value={teacherId} onChange={(e) => setTeacherId(e.target.value)} required>
+                    <option value="">Pilih guru...</option>
+                    {(options?.teachers ?? []).map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs font-semibold text-slate-700">
+                  Mata Pelajaran
+                  <select className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-normal" value={subjectId} onChange={(e) => setSubjectId(e.target.value)} required>
+                    <option value="">Pilih mapel...</option>
+                    {(options?.subjects ?? []).map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs font-semibold text-slate-700">
+                  Semester
+                  <select className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-normal" value={periodId} onChange={(e) => setPeriodId(e.target.value)} required>
+                    <option value="">Pilih semester...</option>
+                    {(options?.periods ?? []).map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-700">Pilih Kelas Target ({selectedClassIds.length} dipilih):</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClassIds(selectedClassIds.length === (options?.classes ?? []).length ? [] : (options?.classes ?? []).map((c) => c.id))}
+                    className="text-xs font-semibold text-indigo-700 hover:underline"
+                  >
+                    {selectedClassIds.length === (options?.classes ?? []).length ? "Batal Pilih Semua" : "Pilih Semua Kelas"}
+                  </button>
+                </div>
+                <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-3 sm:grid-cols-3">
+                  {(options?.classes ?? []).map((cls) => {
+                    const checked = selectedClassIds.includes(cls.id);
+                    return (
+                      <label key={cls.id} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${checked ? "border-indigo-600 bg-indigo-50 text-indigo-950 shadow-2xs" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleClass(cls.id)} className="rounded border-slate-300 text-indigo-700" />
+                        <span>{cls.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setModalOpen(false)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700">Batal</button>
+                <button type="submit" disabled={saving || selectedClassIds.length === 0} className="rounded-xl bg-teal-800 px-5 py-2 text-xs font-semibold text-white hover:bg-teal-900 disabled:opacity-50">
+                  {saving ? "Menyimpan..." : `Simpan Penugasan (${selectedClassIds.length} Kelas)`}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {confirmDelete ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-base font-semibold text-navy-950">Hapus penugasan?</h2>
+            <p className="mt-2 text-sm text-slate-600">Penugasan <strong>{confirmDelete.label}</strong> akan dihapus jika belum memiliki nilai atau jurnal.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setConfirmDelete(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700">Batal</button>
+              <button type="button" disabled={deleting} onClick={() => void executeDelete()} className="rounded-xl bg-red-700 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+                {deleting ? "Menghapus..." : "Ya, Hapus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </section>
   );
 }
 

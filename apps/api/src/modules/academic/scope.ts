@@ -5,7 +5,7 @@ import { AppError } from "../../lib/errors.ts";
 import { MSG } from "../../lib/messages.ts";
 import { assertSchoolAccess, type RequestMeta } from "../../lib/tenant.ts";
 
-const SCHOOL_READ_ROLES: readonly RoleCode[] = ["ADMIN_SEKOLAH", "WAKAKUR", "KEPALA_SEKOLAH", "TU"];
+const SCHOOL_READ_ROLES: readonly RoleCode[] = ["ADMIN_SEKOLAH", "OPERATOR_SEKOLAH", "WAKAKUR", "KEPALA_SEKOLAH", "TU"];
 
 export type DataScope =
   | { kind: "all" }
@@ -29,7 +29,7 @@ export async function assertCanManage(
   }
 
   const isAdmin = auth.assignments.some(
-    (assignment) => assignment.schoolId === schoolId && assignment.roleCode === "ADMIN_SEKOLAH",
+    (assignment) => assignment.schoolId === schoolId && (assignment.roleCode === "ADMIN_SEKOLAH" || assignment.roleCode === "OPERATOR_SEKOLAH"),
   );
   if (isAdmin) return;
 
@@ -103,7 +103,7 @@ export async function loadScope(
   };
 }
 
-const COORDINATE_ROLES: readonly RoleCode[] = ["ADMIN_SEKOLAH", "WAKAKUR"];
+const COORDINATE_ROLES: readonly RoleCode[] = ["ADMIN_SEKOLAH", "OPERATOR_SEKOLAH", "WAKAKUR"];
 const MONITOR_ROLES: readonly RoleCode[] = ["KEPALA_SEKOLAH", "TU"];
 
 export type PlanAccess = {

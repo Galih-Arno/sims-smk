@@ -91,6 +91,7 @@ export function App() {
                   <Route path="/kelas" element={<ClassesPage />} />
                   <Route path="/kenaikan-kelas" element={<StudentPromotionPage />} />
                   <Route path="/mapel" element={<SubjectsPage />} />
+                  <Route path="/mata-pelajaran" element={<SubjectsPage />} />
                   <Route path="/kurikulum" element={<CurriculaPage />} />
                   <Route path="/pengaturan-nilai" element={<GradePolicyPage />} />
                   <Route path="/pengaturan-absensi" element={<AttendanceCompletenessPage />} />
