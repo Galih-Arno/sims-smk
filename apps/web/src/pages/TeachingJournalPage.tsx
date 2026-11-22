@@ -49,10 +49,10 @@ export function TeachingJournalPage() {
     try {
       const [attBoard, teachList, journalRes] = await Promise.all([
         api<{ assignments: AssignmentOption[] }>(`/api/v1/schools/${schoolId}/attendance`).catch(() => ({ assignments: [] as AssignmentOption[] })),
-        api<{ items: Array<{ id: string; classId: string }> }>(`/api/v1/schools/${schoolId}/teaching-assignments?page=1&pageSize=100`).catch(() => ({ items: [] })),
+        api<{ items: Array<{ id: string; classId?: string; class?: { id: string } }> }>(`/api/v1/schools/${schoolId}/teaching-assignments?page=1&pageSize=100`).catch(() => ({ items: [] })),
         api<{ journals: JournalItem[] }>(`/api/v1/schools/${schoolId}/journals`),
       ]);
-      const classMap = new Map(teachList.items.map((t) => [t.id, t.classId]));
+      const classMap = new Map(teachList.items.map((t) => [t.id, t.classId ?? t.class?.id ?? ""]));
       const enriched = attBoard.assignments.map((a) => ({ ...a, classId: classMap.get(a.id) }));
       setAssignments(enriched);
       if (!assignmentId && enriched[0]) setAssignmentId(enriched[0].id);
@@ -73,23 +73,26 @@ export function TeachingJournalPage() {
   const selectedAssignment = useMemo(() => assignments.find((a) => a.id === assignmentId) ?? null, [assignments, assignmentId]);
 
   useEffect(() => {
-    if (!schoolId || !selectedAssignment?.classId) {
+    if (!schoolId || !assignmentId) {
       setStudents([]);
       setMarks({});
       return;
     }
     let active = true;
     setLoadingRoster(true);
-    api<{ items: StudentItem[] }>(`/api/v1/schools/${schoolId}/students?classId=${selectedAssignment.classId}&status=AKTIF&page=1&pageSize=100`)
+    api<{ summary?: { students?: Array<{ studentId: string; name: string; nis: string | null }> } }>(
+      `/api/v1/schools/${schoolId}/attendance?assignmentId=${assignmentId}&page=1&pageSize=1`
+    )
       .then((res) => {
         if (!active) return;
-        setStudents(res.items);
-        setMarks(Object.fromEntries(res.items.map((st) => [st.id, "HADIR" as AttStatus])));
+        const list = (res.summary?.students ?? []).map((st) => ({ id: st.studentId, name: st.name, nis: st.nis }));
+        setStudents(list);
+        setMarks(Object.fromEntries(list.map((st) => [st.id, "HADIR" as AttStatus])));
       })
       .catch(() => { if (active) { setStudents([]); setMarks({}); } })
       .finally(() => { if (active) setLoadingRoster(false); });
     return () => { active = false; };
-  }, [schoolId, selectedAssignment?.classId]);
+  }, [schoolId, assignmentId]);
 
   const counts = useMemo(() => {
     const c = { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0 };
@@ -188,7 +191,7 @@ export function TeachingJournalPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 pb-6">
+    <div className="mx-auto max-w-2xl space-y-5 pb-28">
       <section className="rounded-[28px] bg-gradient-to-br from-[#081236] via-[#0D1B4C] to-[#1D3587] p-6 text-white shadow-xl shadow-[#0D1B4C]/15">
         <span className="inline-block rounded-full bg-[#F5C400]/20 px-3 py-1 text-[11px] font-bold tracking-wider text-[#F5C400] uppercase">
           SOP-02 • KBM & Presensi Terpadu

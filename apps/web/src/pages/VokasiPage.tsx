@@ -25,6 +25,9 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
   // BKK & Tracer Study state
   const [jobs, setJobs] = useState<BkkJobPostDto[]>([]);
   const [tracers, setTracers] = useState<AlumniTracerDto[]>([]);
+  const [graduatedStudents, setGraduatedStudents] = useState<Array<{ id: string; name: string; nisn: string; concentrationName?: string | null; className?: string | null; isActive?: boolean }>>([]);
+  const [yearFilter, setYearFilter] = useState("ALL");
+  const [majorFilter, setMajorFilter] = useState("ALL");
   const [companyName, setCompanyName] = useState("");
   const [positionTitle, setPositionTitle] = useState("");
   const [location, setLocation] = useState("");
@@ -52,8 +55,8 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
     setError(null);
     try {
       const [toolList, loanList] = await Promise.all([
-        api<WorkshopToolDto[]>(`/schools/${schoolId}/vokasi/tools`),
-        api<ToolLoanDto[]>(`/schools/${schoolId}/vokasi/tool-loans`),
+        api<WorkshopToolDto[]>(`/api/v1/schools/${schoolId}/vokasi/tools`),
+        api<ToolLoanDto[]>(`/api/v1/schools/${schoolId}/vokasi/tool-loans`),
       ]);
       setTools(toolList);
       setLoans(loanList);
@@ -73,12 +76,15 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
     setLoading(true);
     setError(null);
     try {
-      const [jobList, tracerList] = await Promise.all([
-        api<BkkJobPostDto[]>(`/schools/${schoolId}/vokasi/bkk-jobs`),
-        api<AlumniTracerDto[]>(`/schools/${schoolId}/vokasi/tracer-study`),
+      const [jobList, tracerList, studentRes] = await Promise.all([
+        api<BkkJobPostDto[]>(`/api/v1/schools/${schoolId}/vokasi/bkk-jobs`),
+        api<AlumniTracerDto[]>(`/api/v1/schools/${schoolId}/vokasi/tracer-study`),
+        api<{ items: Array<{ id: string; name: string; nisn: string; concentrationName?: string | null; className?: string | null; isActive?: boolean }> }>(`/api/v1/schools/${schoolId}/students?page=1&pageSize=50`).catch(() => ({ items: [] })),
       ]);
       setJobs(jobList);
       setTracers(tracerList);
+      const tracedNames = new Set(tracerList.map((t) => t.alumniName.trim().toLowerCase()));
+      setGraduatedStudents(studentRes.items.filter((st) => (st.isActive === false || !st.className) && !tracedNames.has(st.name.trim().toLowerCase())));
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Gagal memuat data BKK & Tracer Study.");
     } finally {
@@ -104,7 +110,7 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
     setError(null);
     setSuccess(null);
     try {
-      await api<WorkshopToolDto>(`/schools/${schoolId}/vokasi/tools`, {
+      await api<WorkshopToolDto>(`/api/v1/schools/${schoolId}/vokasi/tools`, {
         method: "POST",
         body: JSON.stringify({ assetCode, name: toolName, labName, totalQty, condition }),
       });
@@ -127,7 +133,7 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
     setError(null);
     setSuccess(null);
     try {
-      await api<ToolLoanDto>(`/schools/${schoolId}/vokasi/tool-loans`, {
+      await api<ToolLoanDto>(`/api/v1/schools/${schoolId}/vokasi/tool-loans`, {
         method: "POST",
         body: JSON.stringify({
           toolId: loanToolId,
@@ -155,7 +161,7 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
     setError(null);
     setSuccess(null);
     try {
-      await api<ToolLoanDto>(`/schools/${schoolId}/vokasi/tool-loans/${loanId}/return`, { method: "POST" });
+      await api<ToolLoanDto>(`/api/v1/schools/${schoolId}/vokasi/tool-loans/${loanId}/return`, { method: "POST" });
       setSuccess("Alat praktik berhasil dikembalikan dan stok diperbarui.");
       await loadInventaris();
     } catch (err) {
@@ -172,7 +178,7 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
     setError(null);
     setSuccess(null);
     try {
-      await api<BkkJobPostDto>(`/schools/${schoolId}/vokasi/bkk-jobs`, {
+      await api<BkkJobPostDto>(`/api/v1/schools/${schoolId}/vokasi/bkk-jobs`, {
         method: "POST",
         body: JSON.stringify({
           companyName,
@@ -207,7 +213,7 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
     setError(null);
     setSuccess(null);
     try {
-      await api<AlumniTracerDto>(`/schools/${schoolId}/vokasi/tracer-study`, {
+      await api<AlumniTracerDto>(`/api/v1/schools/${schoolId}/vokasi/tracer-study`, {
         method: "POST",
         body: JSON.stringify({
           alumniName,
@@ -242,6 +248,9 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
 
   const absorbedCount = tracers.filter((t) => t.status !== "BELUM_BEKERJA").length;
   const absorptionRate = tracers.length > 0 ? Math.round((absorbedCount / tracers.length) * 100) : 0;
+  const yearsList = Array.from(new Set(tracers.map((t) => String(t.graduationYear)))).sort((a, b) => Number(b) - Number(a));
+  const majorsList = Array.from(new Set(tracers.map((t) => t.majorName.trim()).filter(Boolean))).sort();
+  const filteredTracers = tracers.filter((t) => (yearFilter === "ALL" || String(t.graduationYear) === yearFilter) && (majorFilter === "ALL" || t.majorName.trim() === majorFilter));
 
   return (
     <div className="space-y-6">
@@ -655,6 +664,27 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
         <div className="grid gap-6 lg:grid-cols-3">
           <form onSubmit={handleCreateTracer} className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-sm">
             <h2 className="text-base font-bold text-[#0D1B4C]">Input Tracer Study Alumni</h2>
+            {graduatedStudents.length > 0 && (
+              <div className="mt-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3">
+                <p className="text-[11px] font-bold text-[#0D1B4C]">Lulusan SOP-01 Belum Di-Tracer ({graduatedStudents.length}):</p>
+                <div className="mt-2 flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
+                  {graduatedStudents.map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => {
+                        setAlumniName(st.name);
+                        if (st.concentrationName) setMajorName(st.concentrationName);
+                        setGraduationYear(new Date().getFullYear());
+                      }}
+                      className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-[#0D1B4C] shadow-2xs hover:bg-[#0D1B4C] hover:text-white"
+                    >
+                      + {st.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-4 space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700">Nama Lengkap Alumni</label>
@@ -729,7 +759,25 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
           </form>
 
           <div className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-2">
-            <h2 className="text-base font-bold text-[#0D1B4C]">Rekap Keterserapan Alumni SMK</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-base font-bold text-[#0D1B4C]">Direktori & Rekap Alumni Lintas Angkatan</h2>
+              <div className="flex flex-wrap gap-2">
+                <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="h-9 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700">
+                  <option value="ALL">Semua Angkatan</option>
+                  {yearsList.map((y) => <option key={y} value={y}>Angkatan {y}</option>)}
+                </select>
+                <select value={majorFilter} onChange={(e) => setMajorFilter(e.target.value)} className="h-9 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700">
+                  <option value="ALL">Semua Jurusan</option>
+                  {majorsList.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-xl bg-emerald-50 p-2.5 text-center"><p className="text-lg font-extrabold text-emerald-800">{tracers.filter((t) => t.status === "BEKERJA").length}</p><p className="text-[11px] font-semibold text-emerald-700">Bekerja</p></div>
+              <div className="rounded-xl bg-amber-50 p-2.5 text-center"><p className="text-lg font-extrabold text-amber-800">{tracers.filter((t) => t.status === "WIRAUSAHA").length}</p><p className="text-[11px] font-semibold text-amber-700">Wirausaha</p></div>
+              <div className="rounded-xl bg-sky-50 p-2.5 text-center"><p className="text-lg font-extrabold text-sky-800">{tracers.filter((t) => t.status === "KULIAH").length}</p><p className="text-[11px] font-semibold text-sky-700">Kuliah</p></div>
+              <div className="rounded-xl bg-slate-100 p-2.5 text-center"><p className="text-lg font-extrabold text-slate-800">{tracers.filter((t) => t.status === "BELUM_BEKERJA").length}</p><p className="text-[11px] font-semibold text-slate-600">Mencari Kerja</p></div>
+            </div>
             {tracers.length === 0 ? (
               <div className="mt-4 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
                 Belum ada data Tracer Study alumni yang tercatat.
@@ -746,7 +794,7 @@ export function VokasiPage({ mode }: { mode: "inventaris" | "bkk" }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {tracers.map((t) => (
+                    {filteredTracers.map((t) => (
                       <tr key={t.id}>
                         <td className="px-3 py-2.5 font-semibold text-slate-900">{t.alumniName}</td>
                         <td className="px-3 py-2.5 text-xs text-slate-600">

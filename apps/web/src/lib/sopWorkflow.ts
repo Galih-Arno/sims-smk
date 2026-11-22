@@ -27,7 +27,7 @@ export const SOP_FRAMEWORK: SopItem[] = [
     trigger: "Pergantian Tahun Pelajaran / Semester Baru",
     outcome: "Arsip tahun lalu terkunci; siswa naik kelas/lulus menjadi alumni; jadwal & wali kelas aktif.",
     steps: [
-      { actor: "Operator / Admin", roles: ["OPERATOR_SEKOLAH", "ADMIN_SEKOLAH"], action: "Membuka tahun ajaran baru, promosi kenaikan kelas (X→XI→XII→Alumni), & konversi rombel PPDB.", formName: "Wizard Kenaikan Kelas & Impor PPDB", actionTo: "/kelas", actionLabel: "Kelola Kelas", handoffTo: "Waka Kurikulum" },
+      { actor: "Operator / Admin", roles: ["OPERATOR_SEKOLAH", "ADMIN_SEKOLAH"], action: "Membuka tahun ajaran baru, promosi kenaikan kelas (X→XI→XII→Alumni), & konversi rombel PPDB.", formName: "Wizard Kenaikan Kelas & Impor PPDB", actionTo: "/kenaikan-kelas", actionLabel: "Wizard Kenaikan", handoffTo: "Waka Kurikulum" },
       { actor: "Waka Kurikulum", roles: ["WAKAKUR"], action: "Menyusun kurikulum per konsentrasi keahlian, SK mengajar guru mapel, & penetapan wali kelas.", formName: "Form Penugasan Mengajar & Wali Kelas", actionTo: "/penugasan", actionLabel: "Penugasan Guru", handoffTo: "Guru Mapel & Wali Kelas" },
     ],
   },

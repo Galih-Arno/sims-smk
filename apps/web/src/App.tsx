@@ -1,3 +1,4 @@
+import { StudentPromotionPage } from "./pages/StudentPromotionPage.tsx";
 import { SopFrameworkPage } from "./pages/SopFrameworkPage.tsx";
 import { Suspense, lazy } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
@@ -88,6 +89,7 @@ export function App() {
                   <Route path="/guru" element={<TeachersPage />} />
                   <Route path="/siswa" element={<StudentsPage />} />
                   <Route path="/kelas" element={<ClassesPage />} />
+                  <Route path="/kenaikan-kelas" element={<StudentPromotionPage />} />
                   <Route path="/mapel" element={<SubjectsPage />} />
                   <Route path="/kurikulum" element={<CurriculaPage />} />
                   <Route path="/pengaturan-nilai" element={<GradePolicyPage />} />
@@ -110,14 +112,6 @@ export function App() {
                   <Route path="/guru/status-nilai" element={<GradeStatusPage view="guru" />} />
                   <Route path="/pegawai/izin" element={<StaffLeavePage />} />
                   <Route path="/pegawai/slip-gaji" element={<PayrollPage mode="employee" />} />
-          <Route path="/kesiswaan/pkl" element={<InternshipPage />} />
-          <Route path="/vokasi/inventaris" element={<VokasiPage mode="inventaris" />} />
-          <Route path="/vokasi/bkk" element={<VokasiPage mode="bkk" />} />
-          <Route path="/ppdb" element={<PublicPortalPage mode="ppdb" />} />
-          <Route path="/kesiswaan/whistleblower" element={<PublicPortalPage mode="whistleblower" />} />
-          <Route path="/keuangan/spp" element={<FinanceParentPortalPage />} />
-          <Route path="/wali/portal" element={<FinanceParentPortalPage />} />
-          <Route path="/kesiswaan/karakter-bk" element={<CharacterCounselingPage />} />
           <Route path="/pegawai/presensi" element={<StaffAttendancePage />} />
           <Route path="/guru/jurnal" element={<TeachingJournalPage />} />
           <Route path="/guru/absensi" element={<AttendancePage />} />
@@ -140,6 +134,14 @@ export function App() {
                   <Route path="/wali/rekap-nilai" element={<GradeRecapPage />} />
                 </Route>
                 <Route path="/sop-kerja" element={<SopFrameworkPage />} />
+          <Route path="/kesiswaan/pkl" element={<InternshipPage />} />
+          <Route path="/vokasi/inventaris" element={<VokasiPage mode="inventaris" />} />
+          <Route path="/vokasi/bkk" element={<VokasiPage mode="bkk" />} />
+          <Route path="/ppdb" element={<PublicPortalPage mode="ppdb" />} />
+          <Route path="/kesiswaan/whistleblower" element={<PublicPortalPage mode="whistleblower" />} />
+          <Route path="/keuangan/spp" element={<FinanceParentPortalPage />} />
+          <Route path="/wali/portal" element={<FinanceParentPortalPage />} />
+          <Route path="/kesiswaan/karakter-bk" element={<CharacterCounselingPage />} />
                 <Route path="/akun" element={<ProfilePage />} />
                 <Route path="/akun/sandi" element={<AccountPasswordPage />} />
               </Route>

@@ -71,6 +71,31 @@ export function ReportDecisionPage({ mode }: { mode: "validation" | "endorsement
   const safePage = Math.min(page, pages);
   const visible = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
+  async function decideBatch() {
+    if (!schoolId || view !== "queue") return;
+    const readyRows = filtered.filter((r) => !r.stale && r.printStatus === "SIAP_CETAK");
+    if (readyRows.length === 0) {
+      setMessage("Tidak ada rapor yang siap disetujui/disahkan secara massal.");
+      return;
+    }
+    setBusy(true);
+    let ok = 0;
+    const decision = mode === "validation" ? "approve" : "endorse";
+    for (const item of readyRows) {
+      try {
+        await api(`/api/v1/schools/${schoolId}/${path}/decision`, {
+          method: "POST",
+          body: JSON.stringify({ studentId: item.studentId, academicPeriodId: item.academicPeriodId, decision }),
+        });
+        ok++;
+      } catch {}
+    }
+    setBusy(false);
+    setSelected(null);
+    setMessage(`${ok} dari ${readyRows.length} rapor siap cetak berhasil ${mode === "validation" ? "divalidasi Wakakur" : "disahkan Kepala Sekolah"}.`);
+    load();
+  }
+
   async function decide(decision: "approve" | "return" | "endorse") {
     if (!schoolId || !selected) return;
     setBusy(true);
@@ -94,7 +119,7 @@ export function ReportDecisionPage({ mode }: { mode: "validation" | "endorsement
   }
 
   return (
-    <section className="space-y-3">
+    <section className="mx-auto max-w-5xl space-y-4 pb-28">
       <div>
         <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
         <p className="text-sm text-slate-500">{mode === "validation" ? "Wakakur menyetujui atau mengembalikan rapor yang diajukan wali kelas." : "Kepala sekolah mengesahkan rapor yang sudah disetujui Wakakur."}</p>

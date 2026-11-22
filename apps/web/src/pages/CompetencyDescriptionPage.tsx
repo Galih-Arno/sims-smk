@@ -125,19 +125,40 @@ export function CompetencyDescriptionPage() {
     }
   }
 
-  function applySuggestions() {
-    if (!sheet) return;
-    setTexts((current) => {
-      const next = { ...current };
-      for (const student of sheet.students) {
-        if (!next[student.studentId]?.trim() && student.suggestion) next[student.studentId] = student.suggestion;
+  async function applySuggestions(overwrite = false) {
+    if (!sheet || !schoolId) return;
+    const next = { ...texts };
+    let appliedCount = 0;
+    for (const student of sheet.students) {
+      if (student.suggestion && (overwrite || !next[student.studentId]?.trim())) {
+        next[student.studentId] = student.suggestion;
+        appliedCount++;
       }
-      return next;
-    });
+    }
+    setTexts(next);
+    if (appliedCount === 0) {
+      setMessage("Semua siswa sudah memiliki deskripsi atau usulan belum tersedia.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const payloadStudents = sheet.students.map((item) => ({ studentId: item.studentId, text: next[item.studentId] ?? "" }));
+      const result = await api<{ sheet: Sheet }>(`/api/v1/schools/${schoolId}/competency-descriptions`, {
+        method: "PUT",
+        body: JSON.stringify({ assignmentId: sheet.assignmentId, students: payloadStudents }),
+      });
+      setPayload((current) => (current ? { ...current, sheet: result.sheet } : current));
+      setTexts(Object.fromEntries(result.sheet.students.map((item) => [item.studentId, item.text])));
+      setMessage(`${appliedCount} deskripsi capaian otomatis diterapkan & disimpan. Siap dikirim ke Wali Kelas.`);
+    } catch (error: unknown) {
+      setMessage(error instanceof ApiClientError ? error.message : "Gagal menerapkan deskripsi otomatis.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <section className="space-y-3">
+    <section className="mx-auto max-w-5xl space-y-4 pb-28">
       <div>
         <h1 className="text-lg font-semibold text-slate-900">Deskripsi Capaian</h1>
         <p className="text-sm text-slate-500">Deskripsi capaian kompetensi dari TP, lingkup materi, dan hasil penilaian yang sudah tersimpan. Usulan tidak memakai AI.</p>
@@ -186,7 +207,8 @@ export function CompetencyDescriptionPage() {
             </table>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="h-9 rounded-lg border border-slate-300 px-3 text-sm disabled:opacity-50" disabled={sheet.locked || blocked} onClick={applySuggestions}>Gunakan usulan kosong</button>
+            <button type="button" className="h-10 rounded-xl bg-[#0D1B4C] px-4 text-xs font-extrabold text-white shadow-xs disabled:opacity-50" disabled={busy || sheet.locked || blocked} onClick={() => void applySuggestions(false)}>⚡ Generate & Simpan Usulan Kosong</button>
+            <button type="button" className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 disabled:opacity-50" disabled={busy || sheet.locked || blocked} onClick={() => void applySuggestions(true)}>Perbarui Semua dari Nilai Terbaru</button>
             <button type="button" className="h-9 rounded-lg bg-sky-700 px-3 text-sm font-medium text-white disabled:opacity-50" disabled={busy || sheet.locked || !dirty} onClick={() => void save()}>Simpan Draf</button>
             <button type="button" className="h-9 rounded-lg bg-emerald-800 px-3 text-sm font-medium text-white disabled:opacity-50" disabled={busy || sheet.locked || dirty || blocked || sheet.status === "SUBMITTED" || sheet.status === "REVISION_REQUESTED"} onClick={() => void submit()}>Kirim ke Wali Kelas</button>
           </div>
