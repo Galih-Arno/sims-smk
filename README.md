@@ -156,7 +156,7 @@ Setiap kali akan mengerjakan suatu fitur atau pembaruan, Anda **WAJIB** melewati
    - **Ambil keputusan arsitektur yang matang:** Evaluasi apakah fitur/komponen yang dibutuhkan **sudah tersedia** (tinggal dihubungkan/diperbaiki), **cukup diperluas (*extend*)** dari modul/komponen yang ada, atau **memang harus dibuat baru** karena belum ada fondasinya. **DILARANG** membuat komponen, endpoint, atau tabel duplikat jika fungsionalitas dasarnya sudah ada.
 2. **Prinsip Efek Domino (*End-to-End Impact Tracing* & 4-Layer RBAC):**
    - Petakan seluruh efek domino dari setiap perubahan ke hulu dan hilir:
-     `Prisma Schema` ↔ `Shared DTO & Zod Schema` ↔ `API Service & Route Guard` ↔ `Frontend State & UI Action` ↔ `Modul Hilir Terdampak (Rapor, Wali Kelas, Keuangan, Audit Log)`.
+     `Prisma Schema` ↔ `Shared DTO & Zod Schema` ↔ `API Service & Route Guard` ↔ `Frontend State & UI Action` ↔ `Modul Hilir Terdampak (E-Rapor, Wali Kelas, Keuangan, Audit Log)`.
    - Pastikan **Kontrak 4-Layer RBAC** selalu sinkron di keempat lapisan:
      - **Layer 1 (Menu/Discovery):** `SuperAppHome.tsx` & `SopFrameworkPage.tsx`
      - **Layer 2 (Router Guard):** `App.tsx` (`<RequireAccess>`)
@@ -166,10 +166,11 @@ Setiap kali akan mengerjakan suatu fitur atau pembaruan, Anda **WAJIB** melewati
    - Uji rancangan logika terhadap skenario operasional SMK yang tervalidasi (merujuk daftar akun & peran nyata pada Bagian 6 `README.md`, seperti `WAKAKUR`, `KAPROG`, `GURU_MAPEL`, `WALI_KELAS`, `BENDAHARA`, `TU`, `KEPALA_SEKOLAH`), termasuk skenario batas (*edge cases*):
      - Guru merangkap jabatan ganda (`KAPROG` + `GURU_MAPEL` + `WALI_KELAS`).
      - Satu mapel diampu banyak kelas lintas jurusan maupun 2+ guru bersamaan (*Team Teaching*).
+     - Siklus revisi nilai e-Rapor antara Guru Mapel dan Wali Kelas saat ditemukan selisih nilai atau deskripsi capaian yang belum tepat.
      - Guru piket/pengganti saat guru utama izin.
      - Koneksi seluler terputus sementara di bengkel/lab saat input presensi atau nilai.
 4. **Analisis Celah Penggunaan & Keamanan (*Usability & Security Gap Audit*):**
-   - **Celah Keamanan:** Periksa potensi *IDOR* (akses lintas sekolah/kelas yang bukan haknya), *privilege escalation* antar 13 peran, validasi input Zod (termasuk batas enum `pageSize`), serta pencatatan *audit trail* pada mutasi sensitif.
+   - **Celah Keamanan:** Periksa potensi *IDOR* (akses lintas sekolah/kelas yang bukan haknya), *privilege escalation* antar 13 peran, validasi input Zod (termasuk batas enum `pageSize`), penguncian mutasi nilai setelah difinalisasi/disahkan, serta pencatatan *audit trail* pada mutasi sensitif.
    - **Celah Penggunaan (UX):** Identifikasi titik gesekan (*friction*) seperti input berulang per kelas, layar penuh geser horizontal di ponsel `360px`, atau hilangnya data saat koneksi terputus.
 5. **Preservasi UI/UX Eksisting (Zero Visual Regression):**
    - **JANGAN mengubah** tema warna utama, struktur navigasi *floating bottom bar*, tata letak kartu beranda Super-App, tipografi, maupun komponen desain yang sudah berjalan baik.
@@ -179,12 +180,18 @@ Setiap kali akan mengerjakan suatu fitur atau pembaruan, Anda **WAJIB** melewati
 
 # ROADMAP PENGEMBANGAN BERTAHAP (EKSEKUSI TERUKUR)
 
-## FASE 1: Kolaborasi Mengajar, Multi-Peran & Keandalan Akademik
-1. **Team Teaching (`Co-Teacher`) & Guru Pengganti (Inval):**
+## FASE 1: Akurasi E-Rapor SMK, Kolaborasi Mengajar & Multi-Peran Lapangan
+1. **Integrasi Penuh E-Rapor Kurikulum Merdeka SMK (Guru Mapel ↔ Wali Kelas ↔ Wakakur ↔ Kepsek):**
+   - **Realitas Lapangan:** Sering terjadi ketidaksinkronan antara nilai akhir guru mapel, leger wali kelas, rekap kehadiran, dan format cetak rapor SMK, atau guru mapel salah kirim nilai sehingga butuh mekanisme pengembalian (*revision loop*) yang terkontrol.
+   - **Implementasi Wajib:**
+     - **Matriks Penerimaan & Revision Loop Wali Kelas (`/wali/penerimaan`):** Wali kelas memantau status real-time seluruh mapel di rombelnya (*Draft*, *Terkirim*, *Perlu Revisi*, *Diterima*). Saat wali kelas mengklik **Minta Revisi** beserta catatan alasan, status nilai pada akun Guru Mapel otomatis terbuka kembali untuk diperbaiki dan dikirim ulang.
+     - **Penguncian Leger & Tarik Otomatis Komponen Non-Mapel:** Sebelum wali kelas mengajukan rapor ke Waka Kurikulum, sistem memvalidasi bahwa 100% mapel rombel berstatus *Diterima*, rekap ketidakhadiran (`S/I/A`) ditarik otomatis dari data presensi/jurnal, serta komponen Ekstrakurikuler, Catatan Wali Kelas, dan Nilai PKL (khusus kelas XII) terisi lengkap.
+     - **Akurasi Kalkulasi & Cetak PDF Rapor SMK:** Pastikan rumus dan pembulatan nilai akhir identik di seluruh layar (Guru Mapel, Leger Wali Kelas, Pratinjau Rapor, hingga PDF cetak) serta pengelompokan mapel mengikuti struktur spektrum Kurikulum Merdeka SMK (**Kelompok Umum** & **Kelompok Kejuruan**).
+2. **Team Teaching (`Co-Teacher`) & Guru Pengganti (Inval):**
    - Tambahkan relasi `TeachingAssignmentCoTeacher` pada `apps/api/prisma/schema.prisma` agar Guru Utama dan Guru Pendamping sama-sama dapat mengisi **E-Jurnal Mengajar**, **TP & Lingkup Materi**, dan **Input Nilai**, sementara **1 nilai akhir rapor** per mapel tetap terjaga tanpa duplikasi. Sediakan opsi penambahan Guru Pendamping pada UI `/penugasan`.
-2. **Multi-Peran Tanpa Gesekan (*Seamless Multi-Role Context*):**
+3. **Multi-Peran Tanpa Gesekan (*Seamless Multi-Role Context*):**
    - Pastikan seluruh layar kerja (Rencana Pembelajaran, Input Nilai, E-Jurnal, dan Penerimaan Wali Kelas) berjalan mulus ketika satu akun memiliki kombinasi peran ganda (`KAPROG` + `GURU_MAPEL` + `WALI_KELAS`).
-3. **Dasbor & Cakupan Kepala Program Keahlian (`KAPROG`):**
+4. **Dasbor & Cakupan Kepala Program Keahlian (`KAPROG`):**
    - Sediakan monitoring dan filter berbasis kompetensi keahlian (TJKT, TSM, AKL, BDP, PH) untuk nilai kejuruan (`KEJURUAN`), inventaris bengkel/lab, dan kesiapan Uji Kompetensi Keahlian (UKK).
 
 ## FASE 2: Ketahanan Jaringan Lapangan (*Offline-Safe*) & Responsivitas Mobile
@@ -208,7 +215,10 @@ Sebelum menulis kode pada setiap fase, tampilkan terlebih dahulu **Matriks Keput
 - `npm --workspace=@sims/shared exec tsc -- --noEmit` (jika menyentuh `packages/shared`)
 - `npm --workspace=@sims/api exec tsc -- --noEmit`
 - `npm --workspace=@sims/web exec tsc -- --noEmit`
-```
 ---
+```
+
+---
+
 
 
