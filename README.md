@@ -58,3 +58,22 @@ Setiap anggota tim yang menyelesaikan tugas atau mengoper pekerjaan kembali **WA
 1. **Ringkasan Perubahan (*What Was Done*):** Daftar file/modul yang diubah beserta fungsi yang sudah berjalan.
 2. **Status Uji Coba (*Verification*):** Bukti lulus `tsc --noEmit` / tes API dan akun peran yang sudah diuji.
 3. **Tindakan Lanjutan (*Next Action Items for Lead/Next Dev*):** Bagian yang belum selesai, penyesuaian skema database yang dibutuhkan, atau langkah konkret yang harus dikerjakan berikutnya saat pekerjaan dioper kembali.
+
+---
+
+## 5. Panduan & Master Prompt untuk Tim yang Menggunakan AI
+
+Jika anggota tim menggunakan asisten AI (Gemini, Cursor, Copilot, Claude, dll.) untuk mempercepat pengembangan, **wajib salin dan tempel Master Prompt di bawah ini pada awal sesi chat AI** agar kode yang dihasilkan tetap mematuhi arsitektur **SAKTI-Ku (SIMS SMK)** dan tidak merusak integrasi yang sudah berjalan:
+
+```text
+Bertindaklah sebagai Senior Full-Stack Engineer untuk proyek SAKTI-Ku (SIMS SMK Super-App) berbasis monorepo TypeScript (React + Tailwind CSS di apps/web, Fastify + Prisma PostgreSQL di apps/api, dan kontrak tipe di packages/shared).
+
+PATUHI PRINSIP ARSITEKTUR BERIKUT TANPA PENGECUALIAN:
+1. Multi-Role RBAC (14 Peran Resmi): Gunakan RoleCode dari @sims/shared dan helper di apps/web/src/lib/access.ts (allJobTitles, rolesAtSchool, isKaprog, isWakakur, dll.). Satu akun dapat memegang jabatan rangkap (misal KAPROG + WALI_KELAS + GURU_MAPEL). Jangan pernah membuat role baru di luar 14 RoleCode.
+2. Kontrak Layout & Mobile-First: Semua halaman fitur baru wajib dibungkus komponen AppPageShell (apps/web/src/components/shell/AppPageShell.tsx) dengan ruang aman bottom navigation dock, kontrak z-index yang bersih, dan tombol ramah sentuhan (min-h-11).
+3. Orkestrasi Estafet 8 SOP (apps/web/src/lib/sopWorkflow.ts): Setiap form input harus mengikuti pendekatan riil di lapangan—gunakan smart defaults/pre-fill (seperti default "HADIR" pada presensi 1-ketuk di TeachingJournalPage.tsx), dukung offline queue bila perlu, dan pastikan output form otomatis tersambung ke peran berikutnya (handoff) sesuai SOP-01 s.d. SOP-08.
+4. Longitudinal & Lintas Jurusan: Data akademik terikat pada Tahun Pelajaran/Semester dan Konsentrasi Keahlian. Arsip semester lalu bersifat immutable (read-only), dan kelulusan kelas XII bertransisi ke status ALUMNI lintas angkatan.
+5. Verifikasi Sebelum Selesai: Pastikan tidak ada error TypeScript (npm --workspace=@sims/web exec tsc -- --noEmit) dan sertakan ringkasan perubahan + tindakan lanjutan untuk serah terima tim.
+
+Tugas saya saat ini adalah: [TULIS TUGAS / SOP YANG AKAN DIKERJAKAN DI SINI]
+```
